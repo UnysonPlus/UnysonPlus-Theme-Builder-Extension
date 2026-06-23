@@ -12,6 +12,21 @@
 > removed (working copy + the three XAMPP mirrors), and the theme's hooks are rewired to the new
 > extension. Wherever this doc says "extend the HF builder," read it as "absorb its code into
 > `theme-builder` and delete the original."
+>
+> **DISTRIBUTION DECISION: `theme-builder` is a DOWNLOAD-ONLY extension, NOT bundled in the plugin
+> package.** It ships from its own GitHub repo (`UnysonPlus/UnysonPlus-Theme-Builder-Extension`,
+> branch `master`) and is registered as a catalog entry in the plugin's
+> `framework/core/components/extensions/manager/available-extensions.php` (source `github`). In the
+> Extensions manager it therefore shows a **Download** card and, once installed, a **delete (trash)**
+> icon — the trash icon appears for any extension present in that catalog; bundled-only extensions
+> never get one. This repo is the source of truth; the plugin does not carry the extension's files.
+>
+> **STATUS UPDATE:** Phase 1 BACKEND FOUNDATION is built and pushed (this repo, v1.0.0): the four
+> CPTs, the absorbed HF render path (`fw_ext_hfbuilder_render`, names preserved → theme unchanged),
+> and `FW_Theme_Builder_Resolver`. STILL DEFERRED (next turn): the conditions UI popup, the Theme
+> Builder admin grid, and the front-end render wiring (header/footer consult + body `template_include`,
+> incl. the per-page-vs-Template precedence decision). The resolver is built but not yet consulted on
+> the front end.
 
 A Divi-style Theme Builder for UnysonPlus: create global **Header**, **Body**, and **Footer**
 templates, bundle them into a **Template** with conditional assignment rules ("Use On / Exclude
