@@ -66,8 +66,11 @@ class FW_Theme_Builder_Resolver {
 			return self::$cache;
 		}
 
-		// Resolution is a front-end concern; never resolve in wp-admin.
-		if ( is_admin() || ! post_type_exists( 'up_template' ) ) {
+		// Resolution is a front-end concern. Bail in wp-admin and on request types
+		// a Template must never hijack — oEmbed responses and feeds (mirrors Divi's
+		// preview/embed escape hatches). REST is intentionally left alone so the
+		// block editor / front-end fetches still see a normal page.
+		if ( is_admin() || is_embed() || is_feed() || ! post_type_exists( 'up_template' ) ) {
 			return self::$cache = null;
 		}
 

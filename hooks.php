@@ -56,6 +56,29 @@ function _filter_fw_theme_builder_body_template_include( $template ) {
 add_filter( 'template_include', '_filter_fw_theme_builder_body_template_include', 99 );
 
 /**
+ * Body class hints (mirrors Divi's et-tb-* classes). When a Template applies to
+ * the request, tag <body> so themes / custom CSS / JS can target Theme-Builder
+ * pages and know which areas the Template overrides. Cheap and very useful.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_body_class( $classes ) {
+	if ( is_admin() || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return $classes;
+	}
+	$r = FW_Theme_Builder_Resolver::resolve();
+	if ( ! $r ) {
+		return $classes;
+	}
+	$classes[] = 'up-tb-template';
+	if ( ! empty( $r['header_id'] ) ) { $classes[] = 'up-tb-has-header'; }
+	if ( ! empty( $r['body_id'] ) )   { $classes[] = 'up-tb-has-body'; }
+	if ( ! empty( $r['footer_id'] ) ) { $classes[] = 'up-tb-has-footer'; }
+	return $classes;
+}
+add_filter( 'body_class', '_filter_fw_theme_builder_body_class' );
+
+/**
  * Attach the page builder to the three private part CPTs (header/footer/body).
  * The builder's own discovery only sees public post types, so we add support
  * directly after the page-builder extension's init (priority 10000). Mirrors the
