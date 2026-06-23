@@ -1,0 +1,61 @@
+/* Theme Builder — admin management page */
+
+.fw-tb-wrap .description {
+	max-width: 760px;
+	margin: .5em 0 1.25em;
+}
+
+.fw-tb-muted {
+	color: #888;
+}
+
+.fw-tb-empty {
+	margin-top: 1.5em;
+	padding: 2.5em 1.5em;
+	text-align: center;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.fw-tb-empty p {
+	margin: .5em 0;
+}
+
+.fw-tb-empty .button {
+	margin: 0 .25em;
+}
+
+/* Templates table */
+.fw-tb-table th,
+.fw-tb-table td {
+	vertical-align: middle;
+}
+
+.fw-tb-table .column-primary {
+	width: 26%;
+}
+
+.fw-tb-table td.column-primary strong a {
+	font-size: 14px;
+	text-decoration: none;
+}
+
+/* Edit form: lean on the framework postbox styling; just spacing here */
+.fw-tb-form {
+	margin-top: 1em;
+	max-width: 920px;
+}
+
+.fw-tb-form .fw-backend-postboxes,
+.fw-tb-form .metabox-holder {
+	margin-top: 0;
+}
+
+.fw-tb-form .submit {
+	padding-top: 1em;
+}
+
+.fw-tb-form .submit .button {
+	margin-right: .5em;
+}
