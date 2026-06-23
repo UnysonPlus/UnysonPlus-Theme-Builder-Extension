@@ -232,25 +232,37 @@ add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_dy
  * Builder-only editing for the Header / Body / Footer preset editors.
  *
  * (1) A NEW preset opens straight into the Unyson Builder instead of the classic
- *     editor — the page builder's `_render` consults this filter when no saved
- *     builder_active value exists, and a truthy result sets data-builder-active so
- *     the editor-integration JS shows the builder on load.
+ *     editor. The page builder hard-codes its default option value to
+ *     builder_active => false, which makes its own `fw_page_builder_set_as_default`
+ *     filter unreachable — so we instead override the page-builder option's
+ *     default VALUE for these CPTs to flip builder_active on. Only the DEFAULT
+ *     changes: a preset that already has saved builder meta keeps it (the box
+ *     loads saved post meta over this default), so existing presets are never
+ *     forced. Runs at priority 20, after the page builder adds its box at 10.
  * (2) The "Default Editor" toggle (.page-builder-hide-button) is hidden on these
- *     screens, so there is no way to switch a preset back to the classic editor.
- *     The "Unyson Builder" button is left intact as a safety net for any legacy
- *     preset that was saved in classic mode.
+ *     screens (see below), so a preset can't be switched back to the classic
+ *     editor. The "Unyson Builder" button is left intact as a safety net for any
+ *     legacy preset saved in classic mode (it only shows when the builder is off).
  *
- * Both are scoped to up_header/up_footer/up_body only; every other post type is
- * untouched.
+ * Both scoped to up_header/up_footer/up_body only; every other post type untouched.
  *
  * @internal
  */
-function _filter_fw_theme_builder_default_to_builder( $default ) {
-	return in_array( up_theme_builder_current_admin_post_type(), array( 'up_header', 'up_body', 'up_footer' ), true )
-		? true
-		: $default;
+function _filter_fw_theme_builder_default_to_builder( $options, $post_type ) {
+	if ( ! in_array( $post_type, array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+		return $options;
+	}
+	if ( isset( $options['page-builder-box']['options']['page-builder'] ) ) {
+		$value = isset( $options['page-builder-box']['options']['page-builder']['value'] )
+			&& is_array( $options['page-builder-box']['options']['page-builder']['value'] )
+			? $options['page-builder-box']['options']['page-builder']['value']
+			: array( 'json' => '[]' );
+		$value['builder_active'] = true;
+		$options['page-builder-box']['options']['page-builder']['value'] = $value;
+	}
+	return $options;
 }
-add_filter( 'fw_page_builder_set_as_default', '_filter_fw_theme_builder_default_to_builder' );
+add_filter( 'fw_post_options', '_filter_fw_theme_builder_default_to_builder', 20, 2 );
 
 /**
  * @internal
