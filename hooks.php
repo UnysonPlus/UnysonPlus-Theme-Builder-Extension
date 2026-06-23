@@ -184,3 +184,46 @@ function _filter_fw_ext_theme_builder_disable_shortcodes( $disabled ) {
 	return array_values( array_unique( array_merge( (array) $disabled, $deny ) ) );
 }
 add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_ext_theme_builder_disable_shortcodes' );
+
+/**
+ * Isolate the dynamic-content elements ("Dynamic Content" tab: Post Title /
+ * Content / Excerpt / Featured Image / Author / Date / Terms / Meta) to the Theme
+ * Builder. They are meaningful only against a queried post supplied by a Header /
+ * Body / Footer template, so they are HIDDEN from the builder palette everywhere
+ * else (Pages, Posts, CPTs).
+ *
+ * Admin-only: a front-end request returns the list untouched (empty $pt), so a
+ * Template that already uses a dynamic element still renders normally. Composes
+ * with the header/footer palette-trim above on the same filter.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_dynamic_elements_scope( $disabled ) {
+	// Front end (and any non-admin context): keep them registered so they render.
+	if ( ! is_admin() ) {
+		return $disabled;
+	}
+
+	// The Theme Builder part editors get the dynamic elements; nowhere else does.
+	$pt = up_theme_builder_current_admin_post_type();
+	if ( in_array( $pt, array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+		return $disabled;
+	}
+
+	$dynamic = apply_filters(
+		'fw_theme_builder_dynamic_elements',
+		array(
+			'post_title',
+			'post_content',
+			'post_excerpt',
+			'featured_image',
+			'post_author',
+			'post_date',
+			'post_terms',
+			'post_meta',
+		)
+	);
+
+	return array_values( array_unique( array_merge( (array) $disabled, (array) $dynamic ) ) );
+}
+add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_dynamic_elements_scope' );
