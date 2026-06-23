@@ -93,6 +93,22 @@ class FW_Theme_Builder_Conditions {
 		return array_keys( self::public_post_types() );
 	}
 
+	/**
+	 * The source list for the "children of pages" multi-select — only hierarchical
+	 * post types (page + hierarchical CPTs), since only those have descendants.
+	 *
+	 * @return string[]
+	 */
+	private static function hierarchical_sources() {
+		$out = array();
+		foreach ( self::public_post_types() as $slug => $obj ) {
+			if ( ! empty( $obj->hierarchical ) ) {
+				$out[] = $slug;
+			}
+		}
+		return $out ? $out : array( 'page' );
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* (1) Option schema for one side                                     */
 	/* ------------------------------------------------------------------ */
@@ -132,6 +148,16 @@ class FW_Theme_Builder_Conditions {
 				'label'       => __( 'Specific pages / posts', 'fw' ),
 				'population'  => 'posts',
 				'source'      => self::singular_sources(),
+				'prepopulate' => 10,
+				'show-type'   => true,
+				'value'       => array(),
+			),
+			$p . 'children_of' => array(
+				'type'        => 'multi-select',
+				'label'       => __( 'Children of pages', 'fw' ),
+				'desc'        => __( 'All descendant pages of the chosen pages (a closer parent wins when several apply).', 'fw' ),
+				'population'  => 'posts',
+				'source'      => self::hierarchical_sources(),
 				'prepopulate' => 10,
 				'show-type'   => true,
 				'value'       => array(),
@@ -189,6 +215,10 @@ class FW_Theme_Builder_Conditions {
 		if ( $singulars ) {
 			$rules[] = array( 'type' => 'pt', 'sub_type' => '', 'ids' => $singulars );
 		}
+		$children_of = array_map( 'intval', (array) fw_akg( $p . 'children_of', $values, array() ) );
+		if ( $children_of ) {
+			$rules[] = array( 'type' => 'ptc', 'sub_type' => '', 'ids' => $children_of );
+		}
 		$in_cats = array_map( 'intval', (array) fw_akg( $p . 'in_categories', $values, array() ) );
 		if ( $in_cats ) {
 			$rules[] = array( 'type' => 'tx', 'sub_type' => 'category', 'ids' => $in_cats );
@@ -215,6 +245,7 @@ class FW_Theme_Builder_Conditions {
 			$p . 'post_types'        => array(),
 			$p . 'archives'          => array(),
 			$p . 'singulars'         => array(),
+			$p . 'children_of'       => array(),
 			$p . 'in_categories'     => array(),
 			$p . 'category_archives' => array(),
 		);
@@ -237,6 +268,9 @@ class FW_Theme_Builder_Conditions {
 					} elseif ( $sub !== '' ) {
 						$v[ $p . 'post_types' ][] = $sub;
 					}
+					break;
+				case 'ptc':
+					$v[ $p . 'children_of' ] = array_merge( $v[ $p . 'children_of' ], $ids );
 					break;
 				case 'ar':
 					$v[ $p . 'archives' ][] = $sub;
@@ -328,6 +362,9 @@ class FW_Theme_Builder_Conditions {
 						$lbl     = isset( $pt_objs[ $sub ] ) ? $pt_objs[ $sub ]->labels->name : $sub;
 						$parts[] = sprintf( __( 'All %s', 'fw' ), $lbl );
 					}
+					break;
+				case 'ptc':
+					$parts[] = sprintf( _n( 'Children of %d page', 'Children of %d pages', count( $ids ), 'fw' ), count( $ids ) );
 					break;
 				case 'ar':
 					$lbl     = isset( $pt_objs[ $sub ] ) ? $pt_objs[ $sub ]->labels->name : $sub;

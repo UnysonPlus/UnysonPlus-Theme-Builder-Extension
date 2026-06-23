@@ -44,14 +44,15 @@
 class FW_Theme_Builder_Resolver {
 
 	/* Specificity weights — higher = more specific = wins. */
-	const W_PT_ID  = 100; // a specific singular post
-	const W_TX_ID  = 80;  // a singular post in a specific term
-	const W_TAX_ID = 80;  // a specific term archive
-	const W_AR     = 60;  // a post-type archive
-	const W_TAX_ALL = 60; // all archives of a taxonomy
-	const W_PT_ALL = 50;  // all singular of a post type
-	const W_CT     = 40;  // a conditional tag (front page / search / 404 / …)
-	const W_DF     = 10;  // default / entire site
+	const W_PT_ID       = 100; // a specific singular post
+	const W_TX_ID       = 80;  // a singular post in a specific term
+	const W_TAX_ID      = 80;  // a specific term archive
+	const W_PT_CHILDREN = 75;  // a descendant of a specific page (+ closeness bonus)
+	const W_AR          = 60;  // a post-type archive
+	const W_TAX_ALL     = 60;  // all archives of a taxonomy
+	const W_PT_ALL      = 50;  // all singular of a post type
+	const W_CT          = 40;  // a conditional tag (front page / search / 404 / …)
+	const W_DF          = 10;  // default / entire site
 
 	/** @var array|null|false  false = not computed yet; null/array = computed result */
 	private static $cache = false;
@@ -233,6 +234,31 @@ class FW_Theme_Builder_Resolver {
 					return in_array( (int) get_queried_object_id(), $ids, true ) ? self::W_PT_ID : -1;
 				}
 				return self::W_PT_ALL;
+
+			case 'ptc': // a descendant of one of the given pages ("children of")
+				if ( ! is_singular() || ! $ids ) {
+					return -1;
+				}
+				$ancestors = get_post_ancestors( (int) get_queried_object_id() ); // [parent, …, root]
+				if ( empty( $ancestors ) ) {
+					return -1;
+				}
+				$best = -1;
+				$depth = count( $ancestors );
+				foreach ( $ids as $pid ) {
+					$idx = array_search( (int) $pid, $ancestors, true );
+					if ( $idx !== false ) {
+						// Closer ancestor (smaller index) → bigger bonus, so a template
+						// targeting the immediate parent beats one targeting a grandparent.
+						// Bonus capped so it never overtakes a specific-post (W_PT_ID) match.
+						$closeness = min( 20, $depth - (int) $idx );
+						$score     = self::W_PT_CHILDREN + $closeness;
+						if ( $score > $best ) {
+							$best = $score;
+						}
+					}
+				}
+				return $best;
 
 			case 'tx':
 				if ( ! is_singular() || ! $sub || ! $ids ) {
