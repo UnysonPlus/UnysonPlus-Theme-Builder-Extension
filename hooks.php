@@ -14,9 +14,46 @@ if ( ! defined( 'UP_HFBUILDER_OWNS_CPTS' ) ) {
 	define( 'UP_HFBUILDER_OWNS_CPTS', true );
 }
 
-// The conditional assignment resolver (Use On / Exclude From). Built now; wired
-// into the front-end render in the render-wiring phase.
+// The conditional assignment resolver (Use On / Exclude From).
 require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-resolver.php';
+
+/**
+ * Body Templates (Phase C1, static).
+ *
+ * When a Template assigns a Body (up_body) to the current request, load our
+ * wrapper template (site/Template header + full-width body builder content +
+ * footer) in place of the theme's normal template. Header/footer inside the
+ * wrapper still resolve through the theme, so a Template can supply all three.
+ *
+ * Skipped when the queried post is itself a page-builder page — a deliberately
+ * built page is never replaced. Body content is currently STATIC (the dynamic
+ * Post Title / Content / Featured Image elements are Phase C2); body Templates are
+ * therefore most useful for 404 / landing / archive layouts today.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_body_template_include( $template ) {
+	if ( is_admin() || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return $template;
+	}
+
+	// Never replace a page the user explicitly built with the page builder.
+	if ( is_singular()
+	     && function_exists( 'fw_ext_page_builder_is_builder_post' )
+	     && fw_ext_page_builder_is_builder_post( (int) get_queried_object_id() ) ) {
+		return $template;
+	}
+
+	if ( (int) FW_Theme_Builder_Resolver::body_id() > 0 ) {
+		$wrapper = dirname( __FILE__ ) . '/views/body-template.php';
+		if ( is_readable( $wrapper ) ) {
+			return $wrapper;
+		}
+	}
+
+	return $template;
+}
+add_filter( 'template_include', '_filter_fw_theme_builder_body_template_include', 99 );
 
 /**
  * Attach the page builder to the three private part CPTs (header/footer/body).
