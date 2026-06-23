@@ -227,3 +227,38 @@ function _filter_fw_theme_builder_dynamic_elements_scope( $disabled ) {
 	return array_values( array_unique( array_merge( (array) $disabled, (array) $dynamic ) ) );
 }
 add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_dynamic_elements_scope' );
+
+/**
+ * Builder-only editing for the Header / Body / Footer preset editors.
+ *
+ * (1) A NEW preset opens straight into the Unyson Builder instead of the classic
+ *     editor — the page builder's `_render` consults this filter when no saved
+ *     builder_active value exists, and a truthy result sets data-builder-active so
+ *     the editor-integration JS shows the builder on load.
+ * (2) The "Default Editor" toggle (.page-builder-hide-button) is hidden on these
+ *     screens, so there is no way to switch a preset back to the classic editor.
+ *     The "Unyson Builder" button is left intact as a safety net for any legacy
+ *     preset that was saved in classic mode.
+ *
+ * Both are scoped to up_header/up_footer/up_body only; every other post type is
+ * untouched.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_default_to_builder( $default ) {
+	return in_array( up_theme_builder_current_admin_post_type(), array( 'up_header', 'up_body', 'up_footer' ), true )
+		? true
+		: $default;
+}
+add_filter( 'fw_page_builder_set_as_default', '_filter_fw_theme_builder_default_to_builder' );
+
+/**
+ * @internal
+ */
+function _action_fw_theme_builder_hide_editor_toggle() {
+	if ( ! in_array( up_theme_builder_current_admin_post_type(), array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+		return;
+	}
+	echo '<style id="fw-theme-builder-no-editor-toggle">.page-builder-hide-button{display:none !important;}</style>' . "\n";
+}
+add_action( 'admin_head', '_action_fw_theme_builder_hide_editor_toggle' );
