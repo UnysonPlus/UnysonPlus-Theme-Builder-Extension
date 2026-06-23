@@ -14,6 +14,13 @@
 
 get_header();
 
+// Set up the queried post so dynamic elements (Post Title / Content / Featured
+// Image) read the right post. Matches the theme's normal flow (get_header before
+// the loop). Only on singular views — archives/404 have no single post.
+if ( is_singular() && have_posts() ) {
+	the_post();
+}
+
 $fw_tb_body_id = class_exists( 'FW_Theme_Builder_Resolver' ) ? (int) FW_Theme_Builder_Resolver::body_id() : 0;
 
 if ( $fw_tb_body_id && function_exists( 'fw_ext_theme_builder_render_body' ) ) {
