@@ -229,6 +229,40 @@ function _filter_fw_theme_builder_dynamic_elements_scope( $disabled ) {
 add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_dynamic_elements_scope' );
 
 /**
+ * Isolate the "Structure" elements (the semantic Flexbox container) to the Theme
+ * Builder, exactly like the Dynamic Content tab above. The Flexbox is the layout
+ * primitive for building Header / Body / Footer parts, so its palette tab is HIDDEN
+ * everywhere else (Pages, Posts, CPTs) and shown only in the part editors.
+ *
+ * Same admin-only contract: a front-end request returns the list untouched so any
+ * preset/template already using a flexbox still renders. Disabling the 'flexbox'
+ * tag makes the shortcodes loader skip it, which also unregisters its page-builder
+ * item type — so the Structure tab disappears from the non-TB palette.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_structure_elements_scope( $disabled ) {
+	// Front end (and any non-admin context): keep it registered so it renders.
+	if ( ! is_admin() ) {
+		return $disabled;
+	}
+
+	// The Theme Builder part editors get the Structure tab; nowhere else does.
+	$pt = up_theme_builder_current_admin_post_type();
+	if ( in_array( $pt, array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+		return $disabled;
+	}
+
+	$structure = apply_filters(
+		'fw_theme_builder_structure_elements',
+		array( 'flexbox' )
+	);
+
+	return array_values( array_unique( array_merge( (array) $disabled, (array) $structure ) ) );
+}
+add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_structure_elements_scope' );
+
+/**
  * Builder-only editing for the Header / Body / Footer preset editors.
  *
  * (1) A NEW preset opens straight into the Unyson Builder instead of the classic
