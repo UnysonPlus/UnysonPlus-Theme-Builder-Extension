@@ -56,6 +56,35 @@ function _filter_fw_theme_builder_body_template_include( $template ) {
 add_filter( 'template_include', '_filter_fw_theme_builder_body_template_include', 99 );
 
 /**
+ * Enqueue the loop-grid stylesheet only when an archive/list request will render a
+ * Body Template as a post loop (the wrapper's loop branch). Skipped on singular,
+ * 404 and admin — those render the body once, no grid. Cheap conditional: the
+ * resolver result is request-cached, so body_id() here reuses the same lookup the
+ * template_include filter makes.
+ *
+ * @internal
+ */
+function _action_fw_theme_builder_enqueue_loop_assets() {
+	if ( is_admin() || is_singular() || is_404() || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return;
+	}
+	if ( (int) FW_Theme_Builder_Resolver::body_id() <= 0 ) {
+		return;
+	}
+	$ext = function_exists( 'fw_ext' ) ? fw_ext( 'theme-builder' ) : null;
+	if ( ! $ext ) {
+		return;
+	}
+	wp_enqueue_style(
+		'fw-theme-builder-loop',
+		$ext->get_uri( '/static/css/loop.css' ),
+		array(),
+		$ext->manifest->get_version()
+	);
+}
+add_action( 'wp_enqueue_scripts', '_action_fw_theme_builder_enqueue_loop_assets' );
+
+/**
  * Body class hints (mirrors Divi's et-tb-* classes). When a Template applies to
  * the request, tag <body> so themes / custom CSS / JS can target Theme-Builder
  * pages and know which areas the Template overrides. Cheap and very useful.
@@ -261,6 +290,41 @@ function _filter_fw_theme_builder_structure_elements_scope( $disabled ) {
 	return array_values( array_unique( array_merge( (array) $disabled, (array) $structure ) ) );
 }
 add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_structure_elements_scope' );
+
+/**
+ * Isolate the "Header/Footer Elements" site-chrome (Menu Toggle / Navigation Menu /
+ * Search / Site Logo) to the Theme Builder, like the Dynamic Content and Structure
+ * tabs above. These are header/footer furniture — meaningless and cluttering inside
+ * a normal page/post — so their palette tab is HIDDEN everywhere except the part
+ * editors. (Social Icons is deliberately NOT here: it is a general-purpose element
+ * and lives in the Components tab, available on every post type.)
+ *
+ * Same admin-only contract: the front end gets the list untouched, so any page that
+ * already uses one of these still renders. With all four disabled outside the TB,
+ * the "Header/Footer Elements" tab simply disappears from the non-TB palette.
+ *
+ * @internal
+ */
+function _filter_fw_theme_builder_chrome_elements_scope( $disabled ) {
+	// Front end (and any non-admin context): keep them registered so they render.
+	if ( ! is_admin() ) {
+		return $disabled;
+	}
+
+	// The Theme Builder part editors get the Header/Footer Elements; nowhere else.
+	$pt = up_theme_builder_current_admin_post_type();
+	if ( in_array( $pt, array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+		return $disabled;
+	}
+
+	$chrome = apply_filters(
+		'fw_theme_builder_chrome_elements',
+		array( 'menu_toggle', 'nav_menu', 'site_search', 'site_logo' )
+	);
+
+	return array_values( array_unique( array_merge( (array) $disabled, (array) $chrome ) ) );
+}
+add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_chrome_elements_scope' );
 
 /**
  * Builder-only editing for the Header / Body / Footer preset editors.

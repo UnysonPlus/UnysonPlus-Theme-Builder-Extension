@@ -20,6 +20,7 @@ class FW_Theme_Builder_Admin_Page {
 	const CAPABILITY = 'edit_theme_options';
 	const NONCE_SAVE = 'fw_theme_builder_save';
 	const NONCE_ROW  = 'fw_theme_builder_row';
+	const NONCE_PART = 'fw_theme_builder_part';
 
 	/** @var FW_Extension_Theme_Builder */
 	private $extension;
@@ -32,6 +33,55 @@ class FW_Theme_Builder_Admin_Page {
 
 		add_action( 'admin_menu', array( $this, '_action_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, '_action_enqueue' ) );
+
+		// Inline "＋ New Header/Body/Footer" creation from the Template screen.
+		add_action( 'wp_ajax_fw_tb_create_part', array( $this, '_ajax_create_part' ) );
+	}
+
+	/**
+	 * AJAX: create a published Header/Body/Footer part inline (from the Template
+	 * edit screen's "＋ New" button) and return its id + edit URL, so the dropdown
+	 * can select it immediately and the user can open it in the builder. The part
+	 * is created builder-active (page-builder json '[]') so it opens straight into
+	 * the page builder, matching the part editors' default-to-builder behavior.
+	 *
+	 * @internal
+	 */
+	public function _ajax_create_part() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'fw' ) ) );
+		}
+		check_ajax_referer( self::NONCE_PART, 'nonce' );
+
+		$cpt = isset( $_POST['cpt'] ) ? sanitize_key( $_POST['cpt'] ) : '';
+		if ( ! in_array( $cpt, $this->extension->get_part_post_types(), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unknown part type.', 'fw' ) ) );
+		}
+
+		$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
+		if ( $name === '' ) {
+			$obj  = get_post_type_object( $cpt );
+			$name = $obj ? $obj->labels->singular_name : __( 'Untitled', 'fw' );
+		}
+
+		$id = wp_insert_post( array(
+			'post_type'   => $cpt,
+			'post_status' => 'publish',
+			'post_title'  => $name,
+		), true );
+
+		if ( is_wp_error( $id ) || ! $id ) {
+			wp_send_json_error( array( 'message' => __( 'Could not create the part.', 'fw' ) ) );
+		}
+
+		// Open straight into the page builder when edited (mirrors the part editors).
+		fw_set_db_post_option( $id, 'page-builder', array( 'json' => '[]', 'builder_active' => true ) );
+
+		wp_send_json_success( array(
+			'id'       => (int) $id,
+			'title'    => get_the_title( $id ),
+			'edit_url' => admin_url( 'post.php?post=' . (int) $id . '&action=edit' ),
+		) );
 	}
 
 	/** @return string */
@@ -100,6 +150,25 @@ class FW_Theme_Builder_Admin_Page {
 		);
 		wp_localize_script( 'fw-theme-builder-admin', 'fwThemeBuilder', array(
 			'confirmDelete' => __( 'Delete this Template? Its header/body/footer designs are not deleted.', 'fw' ),
+			'createNonce'   => wp_create_nonce( self::NONCE_PART ),
+			'editPartBase'  => admin_url( 'post.php' ),
+			// Which dropdown maps to which part CPT (drives the inline "＋ New" button).
+			'parts'         => array(
+				'tb_header_id' => array( 'cpt' => 'up_header', 'noun' => __( 'header', 'fw' ) ),
+				'tb_body_id'   => array( 'cpt' => 'up_body',   'noun' => __( 'body', 'fw' ) ),
+				'tb_footer_id' => array( 'cpt' => 'up_footer', 'noun' => __( 'footer', 'fw' ) ),
+			),
+			'i18n'          => array(
+				'newPart'    => __( '＋ New', 'fw' ),
+				'create'     => __( 'Create', 'fw' ),
+				'cancel'     => __( 'Cancel', 'fw' ),
+				'creating'   => __( 'Creating…', 'fw' ),
+				'editDesign' => __( 'Edit design ↗', 'fw' ),
+				/* translators: %s = part type, e.g. "body" */
+				'namePH'     => __( 'New %s name', 'fw' ),
+				'createdTip' => __( 'Created — now click “Edit design” to build it, then Save the Template.', 'fw' ),
+				'error'      => __( 'Could not create. Please try again.', 'fw' ),
+			),
 		) );
 
 		// The edit sub-screen needs the option-type assets (multi-select, etc.).
@@ -262,7 +331,7 @@ class FW_Theme_Builder_Admin_Page {
 	public function form_options() {
 		return array(
 			'parts_box' => array(
-				'title'   => __( 'Template', 'fw' ),
+				'title'   => __( 'Step 1 — What to show', 'fw' ),
 				'type'    => 'box',
 				'options' => array(
 					'group_parts' => array(
@@ -272,32 +341,35 @@ class FW_Theme_Builder_Admin_Page {
 								'label' => __( 'Name', 'fw' ),
 								'type'  => 'text',
 								'value' => '',
+								'desc'  => __( 'A label just for you — e.g. “Shop pages”, “Landing”, “Blog”.', 'fw' ),
 							),
 							'tb_header_id' => array(
 								'label'   => __( 'Header', 'fw' ),
 								'type'    => 'select',
 								'value'   => '0',
-								'choices' => $this->part_choices( 'up_header', __( '— Inherit (site header) —', 'fw' ) ),
-								'desc'    => __( 'Manage header designs under Theme Builder → Header Presets.', 'fw' ),
+								'choices' => $this->part_choices( 'up_header', __( '— Inherit (use the normal site header) —', 'fw' ) ),
+								'desc'    => __( 'Pick a header design, or click ＋ New to make one. “Inherit” keeps your normal site header.', 'fw' ),
 							),
 							'tb_body_id' => array(
 								'label'   => __( 'Body', 'fw' ),
 								'type'    => 'select',
 								'value'   => '0',
-								'choices' => $this->part_choices( 'up_body', __( '— None (normal page content) —', 'fw' ) ),
+								'choices' => $this->part_choices( 'up_body', __( '— None (keep the normal page content) —', 'fw' ) ),
+								'desc'    => __( 'Replaces the page’s main content. Pick a body design or click ＋ New. “None” keeps the normal content.', 'fw' ),
 							),
 							'tb_footer_id' => array(
 								'label'   => __( 'Footer', 'fw' ),
 								'type'    => 'select',
 								'value'   => '0',
-								'choices' => $this->part_choices( 'up_footer', __( '— Inherit (site footer) —', 'fw' ) ),
+								'choices' => $this->part_choices( 'up_footer', __( '— Inherit (use the normal site footer) —', 'fw' ) ),
+								'desc'    => __( 'Pick a footer design, or click ＋ New to make one. “Inherit” keeps your normal site footer.', 'fw' ),
 							),
 						),
 					),
 				),
 			),
 			'use_on_box' => array(
-				'title'   => __( 'Use On', 'fw' ),
+				'title'   => __( 'Step 2 — Where to show it', 'fw' ),
 				'type'    => 'box',
 				'options' => array(
 					'group_use_on' => array(
@@ -307,7 +379,7 @@ class FW_Theme_Builder_Admin_Page {
 				),
 			),
 			'exclude_box' => array(
-				'title'   => __( 'Exclude From', 'fw' ),
+				'title'   => __( 'Exceptions — where to hide it (optional)', 'fw' ),
 				'type'    => 'box',
 				'options' => array(
 					'group_exclude' => array(
@@ -479,6 +551,12 @@ class FW_Theme_Builder_Admin_Page {
 		<h1 class="wp-heading-inline"><?php echo esc_html( $title ); ?></h1>
 		<a href="<?php echo esc_url( $back ); ?>" class="page-title-action"><?php esc_html_e( 'Back to Templates', 'fw' ); ?></a>
 		<hr class="wp-header-end">
+
+		<div class="fw-tb-intro">
+			<p><strong><?php esc_html_e( 'Two simple steps:', 'fw' ); ?></strong>
+			<?php esc_html_e( '1) choose which Header, Body and Footer to show, then 2) choose where on your site to show them.', 'fw' ); ?></p>
+			<p><?php esc_html_e( 'No design yet? Click “＋ New” next to a dropdown to create one without leaving this page — then “Edit design” to build it in the page builder.', 'fw' ); ?></p>
+		</div>
 
 		<form method="post" action="<?php echo esc_url( $action ); ?>" class="fw-tb-form">
 			<?php wp_nonce_field( self::NONCE_SAVE ); ?>

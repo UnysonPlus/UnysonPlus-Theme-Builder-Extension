@@ -41,6 +41,47 @@
 	text-decoration: none;
 }
 
+/* Plain-language intro on the edit screen */
+.fw-tb-intro {
+	max-width: 920px;
+	margin: 1em 0 .25em;
+	padding: .75em 1em;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-left: 4px solid #2271b1;
+	border-radius: 4px;
+}
+.fw-tb-intro p {
+	margin: .35em 0;
+}
+
+/* Per-dropdown tools: "＋ New" + "Edit design" + inline create form */
+.fw-tb-part-tools {
+	margin-top: .5em;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5em;
+}
+.fw-tb-part-tools .fw-tb-editdesign {
+	text-decoration: none;
+	font-size: 12px;
+}
+.fw-tb-part-tools .fw-tb-newpart-form {
+	display: inline-flex;
+	align-items: center;
+	gap: .35em;
+	flex-wrap: wrap;
+}
+.fw-tb-part-tools .fw-tb-newpart-name {
+	min-width: 220px;
+}
+.fw-tb-part-tools .fw-tb-newpart-tip {
+	color: #2271b1;
+	font-size: 12px;
+	font-style: italic;
+}
+
 /* Edit form: lean on the framework postbox styling; just spacing here */
 .fw-tb-form {
 	margin-top: 1em;

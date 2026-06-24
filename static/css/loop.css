@@ -1,0 +1,48 @@
+/**
+ * Theme Builder — archive / loop Body grid.
+ *
+ * A Body Template assigned to an archive/blog renders one card PER POST
+ * (.fw-tb-body__item) inside .fw-tb-body--loop. These classes lay those cards out
+ * N-across; the column count comes from the Body's Loop Layout → Columns setting
+ * (class fw-tb-cols-<n>), the gap is set inline from Loop Layout → Gap.
+ *
+ * Responsive: 3+ columns collapse to 2 on tablet and 1 on phone, so a multi-column
+ * archive degrades gracefully on small screens. "Auto" flows as many ~260px cards
+ * as fit. min-width:0 on the item stops long content from blowing out a grid track.
+ */
+.fw-tb-body--loop {
+	display: grid;
+	gap: 1.5rem; /* default; overridden inline by Loop Layout → Gap */
+}
+
+.fw-tb-body--loop > .fw-tb-body__item {
+	min-width: 0;
+}
+
+.fw-tb-body--loop.fw-tb-cols-1 { grid-template-columns: 1fr; }
+.fw-tb-body--loop.fw-tb-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fw-tb-body--loop.fw-tb-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fw-tb-body--loop.fw-tb-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fw-tb-body--loop.fw-tb-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.fw-tb-body--loop.fw-tb-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fw-tb-body--loop.fw-tb-cols-auto { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+@media ( max-width: 992px ) {
+	.fw-tb-body--loop.fw-tb-cols-3,
+	.fw-tb-body--loop.fw-tb-cols-4,
+	.fw-tb-body--loop.fw-tb-cols-5,
+	.fw-tb-body--loop.fw-tb-cols-6 {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media ( max-width: 576px ) {
+	.fw-tb-body--loop.fw-tb-cols-1,
+	.fw-tb-body--loop.fw-tb-cols-2,
+	.fw-tb-body--loop.fw-tb-cols-3,
+	.fw-tb-body--loop.fw-tb-cols-4,
+	.fw-tb-body--loop.fw-tb-cols-5,
+	.fw-tb-body--loop.fw-tb-cols-6 {
+		grid-template-columns: 1fr;
+	}
+}

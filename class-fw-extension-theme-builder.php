@@ -64,6 +64,10 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 		// so values persist to post meta with no custom save handler.
 		add_filter( 'fw_post_options', array( $this, '_filter_type_behavior_options' ), 10, 2 );
 
+		// Loop Layout box (body only): columns + gap for when the Body is used as an
+		// archive/blog post-loop card. Read at render by views/body-template.php.
+		add_filter( 'fw_post_options', array( $this, '_filter_loop_layout_options' ), 10, 2 );
+
 		if ( is_admin() ) {
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-conditions.php';
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-admin-page.php';
@@ -246,6 +250,63 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 								'sticky-shrink'       => __( 'Sticky + Shrink', 'fw' ),
 								'hide-on-scroll'      => __( 'Hide on scroll down', 'fw' ),
 								'transparent-overlay' => __( 'Transparent over hero', 'fw' ),
+							),
+						),
+					),
+				),
+			),
+		);
+
+		return $options;
+	}
+
+	/**
+	 * Loop Layout — Columns + Gap, injected as a side meta box on the up_body edit
+	 * screen. Applies ONLY when the Body is assigned to an archive/blog (it then
+	 * renders one card per post): the wrapper reads tb_loop_columns / tb_loop_gap via
+	 * fw_get_db_post_option() and lays the cards out N-across. Ignored for singular
+	 * and 404/static bodies. Wrapped box → group per the settings-layout convention.
+	 *
+	 * @internal
+	 */
+	public function _filter_loop_layout_options( $options, $post_type ) {
+		if ( $post_type !== 'up_body' ) {
+			return $options;
+		}
+
+		$options['up_tb_loop_layout'] = array(
+			'title'    => __( 'Loop Layout', 'fw' ),
+			'type'     => 'box',
+			'context'  => 'side',
+			'priority' => 'default',
+			'options'  => array(
+				'group_tb_loop' => array(
+					'type'    => 'group',
+					'options' => array(
+						'tb_loop_columns' => array(
+							'label'   => __( 'Columns', 'fw' ),
+							'type'    => 'select',
+							'value'   => '3',
+							'choices' => array(
+								'auto' => __( 'Auto (responsive)', 'fw' ),
+								'1'    => __( '1 — single column (list)', 'fw' ),
+								'2'    => __( '2 columns', 'fw' ),
+								'3'    => __( '3 columns', 'fw' ),
+								'4'    => __( '4 columns', 'fw' ),
+								'5'    => __( '5 columns', 'fw' ),
+								'6'    => __( '6 columns', 'fw' ),
+							),
+							'desc'    => __( 'When this Body is assigned to a blog/archive, its card repeats per post in this many columns (collapses on smaller screens).', 'fw' ),
+						),
+						'tb_loop_gap' => array(
+							'label'   => __( 'Gap', 'fw' ),
+							'type'    => 'select',
+							'value'   => 'medium',
+							'choices' => array(
+								'none'   => __( 'None', 'fw' ),
+								'small'  => __( 'Small', 'fw' ),
+								'medium' => __( 'Medium', 'fw' ),
+								'large'  => __( 'Large', 'fw' ),
 							),
 						),
 					),
