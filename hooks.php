@@ -17,6 +17,23 @@ if ( ! defined( 'UP_HFBUILDER_OWNS_CPTS' ) ) {
 // The conditional assignment resolver (Use On / Exclude From).
 require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-resolver.php';
 
+// The bundled-template seeder (up-templates/*.json → CPTs, manual-edit guarded).
+require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-seeder.php';
+
+/**
+ * Auto-import a theme's bundled Templates when it is activated. Idempotent: the
+ * manual-edit guard means a re-activation never clobbers a part/template the user
+ * has since edited.
+ *
+ * @internal
+ */
+function _action_fw_theme_builder_seed_on_switch() {
+	if ( class_exists( 'FW_Theme_Builder_Seeder' ) ) {
+		FW_Theme_Builder_Seeder::seed_all( false );
+	}
+}
+add_action( 'after_switch_theme', '_action_fw_theme_builder_seed_on_switch' );
+
 /**
  * Body Templates (Phase C1, static).
  *

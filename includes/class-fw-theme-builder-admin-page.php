@@ -220,6 +220,10 @@ class FW_Theme_Builder_Admin_Page {
 		} elseif ( $action === 'seed_default' ) {
 			$this->seed_default_template();
 			$this->redirect_list( 'seeded' );
+		} elseif ( $action === 'import_seeds' && class_exists( 'FW_Theme_Builder_Seeder' ) ) {
+			// Manual-edit guard ON: edited parts/templates are never overwritten.
+			FW_Theme_Builder_Seeder::seed_all( false );
+			$this->redirect_list( 'imported' );
 		}
 	}
 
@@ -442,6 +446,7 @@ class FW_Theme_Builder_Admin_Page {
 			'deleted'    => __( 'Template deleted.', 'fw' ),
 			'duplicated' => __( 'Template duplicated.', 'fw' ),
 			'seeded'     => __( 'Default Website Template created.', 'fw' ),
+			'imported'   => __( 'Bundled templates imported. Edited templates were left untouched.', 'fw' ),
 		);
 		return isset( $map[ $key ] ) ? $map[ $key ] : '';
 	}
@@ -470,6 +475,9 @@ class FW_Theme_Builder_Admin_Page {
 		?>
 		<h1 class="wp-heading-inline"><?php esc_html_e( 'Theme Builder', 'fw' ); ?></h1>
 		<a href="<?php echo esc_url( $this->add_url() ); ?>" class="page-title-action"><?php esc_html_e( 'Add Template', 'fw' ); ?></a>
+		<?php if ( class_exists( 'FW_Theme_Builder_Seeder' ) && FW_Theme_Builder_Seeder::has_seeds() ) : ?>
+			<a href="<?php echo esc_url( $this->row_action_url( 'import_seeds', 0 ) ); ?>" class="page-title-action"><?php esc_html_e( 'Import bundled templates', 'fw' ); ?></a>
+		<?php endif; ?>
 		<hr class="wp-header-end">
 
 		<?php if ( $notice && ( $msg = $this->notice_text( $notice ) ) ) : ?>
