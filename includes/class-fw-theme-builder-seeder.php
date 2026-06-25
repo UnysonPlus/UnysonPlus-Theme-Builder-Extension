@@ -188,6 +188,43 @@ class FW_Theme_Builder_Seeder {
 		return array( 'id' => (int) $id, 'status' => 'created' );
 	}
 
+	/**
+	 * Inverse of seeding: build the up-templates/*.json structure from an existing
+	 * Template (name + conditions + each part's builder tree). The dev saves the
+	 * returned data as up-templates/<slug>.json in a (child) theme to ship it. Returns
+	 * null for a non-template id.
+	 *
+	 * @param int $id up_template id
+	 * @return array|null
+	 */
+	public static function export_template( $id ) {
+		$id = (int) $id;
+		if ( get_post_type( $id ) !== 'up_template' ) {
+			return null;
+		}
+
+		$part_tree = static function ( $pid ) {
+			$pid = (int) $pid;
+			if ( $pid <= 0 ) {
+				return null;
+			}
+			$v = fw_get_db_post_option( $pid, 'page-builder' );
+			if ( is_array( $v ) && isset( $v['json'] ) ) {
+				$tree = json_decode( (string) $v['json'], true );
+				return is_array( $tree ) ? $tree : null;
+			}
+			return null;
+		};
+
+		return array(
+			'name'       => get_the_title( $id ),
+			'conditions' => self::normalize_conditions( fw_get_db_post_option( $id, 'tb_conditions' ) ),
+			'header'     => $part_tree( fw_get_db_post_option( $id, 'tb_header_id' ) ),
+			'body'       => $part_tree( fw_get_db_post_option( $id, 'tb_body_id' ) ),
+			'footer'     => $part_tree( fw_get_db_post_option( $id, 'tb_footer_id' ) ),
+		);
+	}
+
 	/* ---------------------------------------------------------------- */
 
 	private static function find_by_seed_key( $cpt, $seed_key ) {

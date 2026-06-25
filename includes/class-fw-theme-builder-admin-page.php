@@ -224,6 +224,8 @@ class FW_Theme_Builder_Admin_Page {
 			// Manual-edit guard ON: edited parts/templates are never overwritten.
 			FW_Theme_Builder_Seeder::seed_all( false );
 			$this->redirect_list( 'imported' );
+		} elseif ( $action === 'export' && $id ) {
+			$this->export_download( $id ); // streams a download + exit(); falls through if invalid
 		}
 	}
 
@@ -273,6 +275,31 @@ class FW_Theme_Builder_Admin_Page {
 				fw_set_db_post_option( $new_id, $k, fw_get_db_post_option( $id, $k ) );
 			}
 		}
+	}
+
+	/**
+	 * Stream a Template as an up-templates/<slug>.json download (the seeder's inverse).
+	 * The dev drops the file into a (child) theme's up-templates/ folder to ship it.
+	 * No server file is written — we only send a download — so there is no file-write
+	 * attack surface. Exits on success; returns (falls through) for an invalid id.
+	 */
+	private function export_download( $id ) {
+		if ( ! class_exists( 'FW_Theme_Builder_Seeder' ) ) {
+			return;
+		}
+		$data = FW_Theme_Builder_Seeder::export_template( (int) $id );
+		if ( ! is_array( $data ) ) {
+			return;
+		}
+		$slug = sanitize_title( get_the_title( $id ) );
+		if ( $slug === '' ) {
+			$slug = 'template-' . (int) $id;
+		}
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $slug . '.json"' );
+		echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		exit;
 	}
 
 	private function seed_default_template() {
@@ -519,6 +546,7 @@ class FW_Theme_Builder_Admin_Page {
 							<div class="row-actions">
 								<span class="edit"><a href="<?php echo esc_url( $edit ); ?>"><?php esc_html_e( 'Edit', 'fw' ); ?></a> | </span>
 								<span class="duplicate"><a href="<?php echo esc_url( $this->row_action_url( 'duplicate', $tpl->ID ) ); ?>"><?php esc_html_e( 'Duplicate', 'fw' ); ?></a> | </span>
+								<span class="export"><a href="<?php echo esc_url( $this->row_action_url( 'export', $tpl->ID ) ); ?>" title="<?php esc_attr_e( 'Download as up-templates/*.json to ship in a theme', 'fw' ); ?>"><?php esc_html_e( 'Export', 'fw' ); ?></a> | </span>
 								<span class="trash"><a href="<?php echo esc_url( $this->row_action_url( 'delete', $tpl->ID ) ); ?>" class="fw-tb-delete submitdelete"><?php esc_html_e( 'Delete', 'fw' ); ?></a></span>
 							</div>
 							<button type="button" class="toggle-row"><span class="screen-reader-text"><?php esc_html_e( 'Show more details', 'fw' ); ?></span></button>
