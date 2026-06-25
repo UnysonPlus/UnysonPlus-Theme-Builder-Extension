@@ -360,7 +360,7 @@ class FW_Theme_Builder_Admin_Page {
 	 * @return array
 	 */
 	public function form_options() {
-		return array(
+		$options = array(
 			'parts_box' => array(
 				'title'   => __( 'Step 1 — What to show', 'fw' ),
 				'type'    => 'box',
@@ -420,6 +420,35 @@ class FW_Theme_Builder_Admin_Page {
 				),
 			),
 		);
+
+		return self::without_dynamic_content( $options );
+	}
+
+	/**
+	 * Recursively force `dynamic_content => false` on every option in a schema, so
+	 * no Theme-Builder Template field shows the Dynamic Content picker (the
+	 * dashicons-database trigger). A Template is global — its Name and its where /
+	 * where-not conditions are not post-contextual — so dynamic {{tokens}} have no
+	 * meaning here and the picker is only noise. Containers (box/group/…) recurse
+	 * through their nested `options`; leaves (anything with a `type`) get the flag.
+	 *
+	 * @param array $options
+	 * @return array
+	 */
+	private static function without_dynamic_content( array $options ) {
+		foreach ( $options as $id => $opt ) {
+			if ( ! is_array( $opt ) ) {
+				continue;
+			}
+			if ( isset( $opt['type'] ) ) {
+				$opt['dynamic_content'] = false;
+			}
+			if ( isset( $opt['options'] ) && is_array( $opt['options'] ) ) {
+				$opt['options'] = self::without_dynamic_content( $opt['options'] );
+			}
+			$options[ $id ] = $opt;
+		}
+		return $options;
 	}
 
 	/**

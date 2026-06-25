@@ -62,18 +62,45 @@ class FW_Theme_Builder_Seeder {
 		return $files;
 	}
 
+	/** @return array slug => absolute path for bundled PAGES (up-pages/*.json). */
+	public static function page_seed_files() {
+		$files  = array();
+		$child  = trailingslashit( get_stylesheet_directory() ) . 'up-pages';
+		$parent = trailingslashit( get_template_directory() ) . 'up-pages';
+		$dirs   = array();
+		if ( $parent !== $child && is_dir( $parent ) ) {
+			$dirs[] = $parent; // parent first
+		}
+		if ( is_dir( $child ) ) {
+			$dirs[] = $child;  // child overrides
+		}
+		foreach ( $dirs as $dir ) {
+			foreach ( (array) glob( $dir . '/*.json' ) as $path ) {
+				$slug = sanitize_title( basename( $path, '.json' ) );
+				if ( $slug !== '' ) {
+					$files[ $slug ] = $path;
+				}
+			}
+		}
+		return $files;
+	}
+
 	public static function has_seeds() {
-		return ! empty( self::seed_files() );
+		return ! empty( self::seed_files() ) || ! empty( self::page_seed_files() );
 	}
 
 	/**
-	 * Seed every bundled template. @return array slug => result.
+	 * Seed every bundled Template AND every bundled page-builder Page.
+	 * @return array{templates:array,pages:array}
 	 */
 	public static function seed_all( $force = false ) {
 		$force  = ( $force === true ) || self::force_requested();
-		$report = array();
+		$report = array( 'templates' => array(), 'pages' => array() );
 		foreach ( self::seed_files() as $slug => $path ) {
-			$report[ $slug ] = self::seed_file( $path, $force );
+			$report['templates'][ $slug ] = self::seed_file( $path, $force );
+		}
+		foreach ( self::page_seed_files() as $slug => $path ) {
+			$report['pages'][ $slug ] = self::seed_page( $path, $force );
 		}
 		return $report;
 	}
@@ -226,6 +253,83 @@ class FW_Theme_Builder_Seeder {
 	}
 
 	/* ---------------------------------------------------------------- */
+
+	/**
+	 * Seed one up-pages/*.json as a real page-builder PAGE (post_type=page) so the
+	 * user edits it directly in the page builder. Honors the manual-edit guard and
+	 * optionally sets it as the static front page / a page template.
+	 *
+	 *   { "title": "Home", "slug": "home", "front_page": true,
+	 *     "template": "template-file.php" (optional), "content": <builder tree> }
+	 *
+	 * @return array { id, status }
+	 */
+	public static function seed_page( $path, $force = false ) {
+		if ( ! is_readable( $path ) ) {
+			return array( 'status' => 'unreadable' );
+		}
+		$data = json_decode( (string) file_get_contents( $path ), true );
+		if ( ! is_array( $data ) || ! isset( $data['content'] ) || ! is_array( $data['content'] ) ) {
+			return array( 'status' => 'invalid-json' );
+		}
+
+		$slug     = sanitize_title( ( isset( $data['slug'] ) && $data['slug'] !== '' ) ? $data['slug'] : basename( $path, '.json' ) );
+		$title    = ( isset( $data['title'] ) && $data['title'] !== '' ) ? sanitize_text_field( $data['title'] ) : ucwords( str_replace( '-', ' ', $slug ) );
+		$seed_key = 'page:' . $slug;
+		$json     = (string) wp_json_encode( $data['content'] );
+
+		$existing = self::find_page_by_seed_key( $seed_key );
+		if ( $existing ) {
+			$stored = (string) get_post_meta( $existing, self::HASH_META, true );
+			$edited = ( $stored === '' ) || ( md5( self::part_builder_json( $existing ) ) !== $stored );
+			if ( $edited && ! $force ) {
+				return array( 'id' => $existing, 'status' => 'skipped-edited' );
+			}
+			self::write_part_builder( $existing, $json );
+			update_post_meta( $existing, self::HASH_META, md5( self::part_builder_json( $existing ) ) );
+			self::apply_page_extras( $existing, $data );
+			return array( 'id' => $existing, 'status' => ( $edited ? 'forced' : 'updated' ) );
+		}
+
+		$id = wp_insert_post( array(
+			'post_type'   => 'page',
+			'post_status' => 'publish',
+			'post_title'  => $title,
+			'post_name'   => $slug,
+		), true );
+		if ( is_wp_error( $id ) || ! $id ) {
+			return array( 'id' => 0, 'status' => 'insert-failed' );
+		}
+		self::write_part_builder( $id, $json );
+		update_post_meta( $id, self::SEED_META, $seed_key );
+		update_post_meta( $id, self::HASH_META, md5( self::part_builder_json( $id ) ) );
+		self::apply_page_extras( $id, $data );
+		return array( 'id' => (int) $id, 'status' => 'created' );
+	}
+
+	private static function find_page_by_seed_key( $seed_key ) {
+		$q = get_posts( array(
+			'post_type'        => 'page',
+			'post_status'      => 'any',
+			'numberposts'      => 1,
+			'fields'           => 'ids',
+			'meta_key'         => self::SEED_META,
+			'meta_value'       => $seed_key,
+			'suppress_filters' => false,
+		) );
+		return $q ? (int) $q[0] : 0;
+	}
+
+	/** Optional page template + static-front-page assignment from the seed JSON. */
+	private static function apply_page_extras( $id, $data ) {
+		if ( ! empty( $data['template'] ) ) {
+			update_post_meta( $id, '_wp_page_template', sanitize_text_field( $data['template'] ) );
+		}
+		if ( ! empty( $data['front_page'] ) ) {
+			update_option( 'show_on_front', 'page' );
+			update_option( 'page_on_front', (int) $id );
+		}
+	}
 
 	private static function find_by_seed_key( $cpt, $seed_key ) {
 		$q = get_posts( array(

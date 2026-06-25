@@ -120,3 +120,71 @@ function fw_ext_theme_builder_render_body( $post_id ) {
 	return $html;
 }
 endif;
+
+/**
+ * ECHO a Body Template's content region for the current request, handling the
+ * three render modes (singular / archive-loop / static) and the Loop Layout meta.
+ * Single source of truth shared by the unysonplus-theme body wrapper
+ * (views/body-template.php) and the theme-independent standalone document
+ * (views/standalone-template.php) so both stay in lockstep. Caller supplies the
+ * surrounding chrome (header/footer); this only prints the body region.
+ *
+ * @param int $body_id
+ * @return void
+ */
+if ( ! function_exists( 'fw_ext_theme_builder_print_body_region' ) ) :
+function fw_ext_theme_builder_print_body_region( $body_id ) {
+	$body_id = (int) $body_id;
+	if ( ! $body_id || ! function_exists( 'fw_ext_theme_builder_render_body' ) ) {
+		return;
+	}
+
+	// A "loop" request is an archive/list of posts — not a single post, not a 404,
+	// and it actually has posts. The body renders once PER POST (Divi post-loop).
+	$is_loop = ! is_singular() && ! is_404() && have_posts();
+
+	if ( $is_loop ) {
+		$cols = function_exists( 'fw_get_db_post_option' ) ? (string) fw_get_db_post_option( $body_id, 'tb_loop_columns' ) : '';
+		if ( ! in_array( $cols, array( 'auto', '1', '2', '3', '4', '5', '6' ), true ) ) {
+			$cols = '3';
+		}
+		$gap_map = array( 'none' => '0', 'small' => '0.75rem', 'medium' => '1.5rem', 'large' => '2.5rem' );
+		$gap_key = function_exists( 'fw_get_db_post_option' ) ? (string) fw_get_db_post_option( $body_id, 'tb_loop_gap' ) : '';
+		$gap     = isset( $gap_map[ $gap_key ] ) ? $gap_map[ $gap_key ] : '1.5rem';
+
+		printf(
+			'<div class="fw-tb-body fw-tb-body--loop fw-tb-cols-%s fw-page-builder-content" style="gap:%s">',
+			esc_attr( $cols ),
+			esc_attr( $gap )
+		);
+		while ( have_posts() ) {
+			the_post();
+			echo '<div class="fw-tb-body__item">';
+			echo fw_ext_theme_builder_render_body( $body_id ); // phpcs:ignore WordPress.Security.EscapeOutput — builder HTML
+			echo '</div>';
+		}
+		echo '</div>';
+
+		if ( function_exists( 'the_posts_pagination' ) ) {
+			the_posts_pagination();
+		}
+		wp_reset_postdata();
+
+	} else {
+
+		// Singular: set up the queried post so dynamic elements read it. Static
+		// (404 / empty archive): render once with no post.
+		if ( is_singular() && have_posts() ) {
+			the_post();
+		}
+
+		echo '<div class="fw-tb-body fw-page-builder-content">';
+		echo fw_ext_theme_builder_render_body( $body_id ); // phpcs:ignore WordPress.Security.EscapeOutput — builder HTML
+		echo '</div>';
+
+		if ( is_singular() ) {
+			wp_reset_postdata();
+		}
+	}
+}
+endif;

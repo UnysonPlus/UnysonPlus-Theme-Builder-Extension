@@ -54,23 +54,96 @@ function _filter_fw_theme_builder_body_template_include( $template ) {
 		return $template;
 	}
 
-	// Never replace a page the user explicitly built with the page builder.
-	if ( is_singular()
-	     && function_exists( 'fw_ext_page_builder_is_builder_post' )
-	     && fw_ext_page_builder_is_builder_post( (int) get_queried_object_id() ) ) {
+	$effective_body = _fw_tb_effective_body_id();
+
+	if ( _fw_tb_is_native_theme() ) {
+		// unysonplus-theme family: the theme renders the header/footer presets
+		// through get_header()/get_footer(); the plugin only takes over the page to
+		// render a Body. Established behavior — unchanged.
+		if ( $effective_body > 0 ) {
+			$wrapper = dirname( __FILE__ ) . '/views/body-template.php';
+			if ( is_readable( $wrapper ) ) {
+				return $wrapper;
+			}
+		}
 		return $template;
 	}
 
-	if ( (int) FW_Theme_Builder_Resolver::body_id() > 0 ) {
-		$wrapper = dirname( __FILE__ ) . '/views/body-template.php';
-		if ( is_readable( $wrapper ) ) {
-			return $wrapper;
+	// Theme-independent (any non-unysonplus theme): when a Body applies, bypass the
+	// foreign theme's template and render the WHOLE page (header preset + body +
+	// footer preset). Header/footer-only Templates keep the theme's page and swap
+	// only its <header>/<footer> — see _action_fw_tb_surgical_swap().
+	if ( $effective_body > 0 ) {
+		$standalone = dirname( __FILE__ ) . '/views/standalone-template.php';
+		if ( is_readable( $standalone ) ) {
+			return $standalone;
 		}
 	}
 
 	return $template;
 }
 add_filter( 'template_include', '_filter_fw_theme_builder_body_template_include', 99 );
+
+/**
+ * The Body id that should REPLACE the page for this request, or 0. A matched Body
+ * applies unless it would hide a deliberately page-builder-built page: a full
+ * replacement body (no [post_content]) never overrides such a page, but a
+ * post_content-WRAPPING body does (it renders the page's own content inside the
+ * Template layout — the Divi "Post Content" pattern).
+ *
+ * @internal
+ * @return int
+ */
+function _fw_tb_effective_body_id() {
+	if ( ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return 0;
+	}
+	$body_id = (int) FW_Theme_Builder_Resolver::body_id();
+	if ( $body_id <= 0 ) {
+		return 0;
+	}
+	$wraps = _fw_tb_body_uses_post_content( $body_id );
+	if ( is_singular()
+	     && function_exists( 'fw_ext_page_builder_is_builder_post' )
+	     && fw_ext_page_builder_is_builder_post( (int) get_queried_object_id() )
+	     && ! $wraps ) {
+		return 0;
+	}
+	return $body_id;
+}
+
+/**
+ * True when the active theme ships the unysonplus-theme's Theme-Builder integration
+ * (it renders header/footer presets itself through get_header()/get_footer()).
+ * Detected by the integration function the theme defines, so the unysonplus-theme
+ * AND its child themes count as native while any third-party theme does not. On a
+ * non-native theme the plugin renders presets itself (full-page takeover for a
+ * Body, surgical <header>/<footer> swap for header/footer-only Templates).
+ * Filterable via `fw_theme_builder_native_theme`.
+ *
+ * @internal
+ * @return bool
+ */
+function _fw_tb_is_native_theme() {
+	return (bool) apply_filters(
+		'fw_theme_builder_native_theme',
+		function_exists( 'unysonplus_get_active_preset_id' )
+	);
+}
+
+/**
+ * True when a body preset contains a [post_content] element. Such a body WRAPS the
+ * queried page's own content (so it may apply even to page-builder pages); one
+ * without it fully REPLACES the content (so it skips builder pages). Cheap string
+ * probe of the stored builder JSON.
+ *
+ * @internal
+ */
+function _fw_tb_body_uses_post_content( $body_id ) {
+	$pb   = function_exists( 'fw_get_db_post_option' ) ? fw_get_db_post_option( (int) $body_id, 'page-builder' ) : null;
+	$json = ( is_array( $pb ) && isset( $pb['json'] ) ) ? (string) $pb['json'] : '';
+	return strpos( $json, 'post_content' ) !== false;
+}
 
 /**
  * Enqueue the loop-grid stylesheet only when an archive/list request will render a
@@ -100,6 +173,168 @@ function _action_fw_theme_builder_enqueue_loop_assets() {
 	);
 }
 add_action( 'wp_enqueue_scripts', '_action_fw_theme_builder_enqueue_loop_assets' );
+
+/**
+ * Theme-independent only: enqueue the matched Template's preset shortcode assets
+ * (CSS/JS) into the head. The unysonplus-theme enqueues these itself; a foreign
+ * theme does not, so without this the preset markup would render UNSTYLED. Reuses
+ * the shortcodes extension's own per-content static enqueuer, so every shortcode a
+ * preset uses pulls exactly the assets it needs — for the standalone takeover and
+ * the surgical <header>/<footer> swap alike. No-op on native themes / admin / when
+ * no Template matches.
+ *
+ * @internal
+ */
+function _action_fw_tb_enqueue_preset_assets() {
+	if ( is_admin() || _fw_tb_is_native_theme() || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return;
+	}
+	$r = FW_Theme_Builder_Resolver::resolve();
+	if ( ! $r ) {
+		return;
+	}
+	$sc = function_exists( 'fw_ext' ) ? fw_ext( 'shortcodes' ) : null;
+	if ( ! $sc || ! method_exists( $sc, 'enqueue_shortcodes_static' ) || ! function_exists( 'fw_ext_page_builder_get_post_content' ) ) {
+		return;
+	}
+	foreach ( array( 'header_id', 'body_id', 'footer_id' ) as $k ) {
+		$pid = isset( $r[ $k ] ) ? (int) $r[ $k ] : 0;
+		if ( $pid <= 0 ) {
+			continue;
+		}
+		$post = get_post( $pid );
+		if ( $post ) {
+			$sc->enqueue_shortcodes_static( fw_ext_page_builder_get_post_content( $post ) );
+		}
+	}
+}
+add_action( 'wp_enqueue_scripts', '_action_fw_tb_enqueue_preset_assets', 9 );
+
+/**
+ * Theme-independent only: for a Template that sets a header and/or footer but whose
+ * Body does NOT replace the page, keep the foreign theme's page intact and swap
+ * just its site <header> / <footer> for the preset(s) via output buffering — so the
+ * theme's content, sidebars and layout are preserved while the page gets the
+ * Template's chrome. Best-effort: targets the first top-level <header> and the last
+ * <footer>; a theme with unconventional markup can be retargeted with the
+ * `fw_theme_builder_swap_pattern` filter, and if no tag is found the preset is
+ * injected at the matching <body> edge as a fallback.
+ *
+ * @internal
+ */
+function _action_fw_tb_surgical_swap() {
+	if ( is_admin() || is_feed() || is_embed()
+	     || ( function_exists( 'is_robots' ) && is_robots() )
+	     || _fw_tb_is_native_theme() || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return;
+	}
+	// A body that replaces the page is handled by the standalone takeover, which
+	// renders the header/footer itself — don't also buffer-swap.
+	if ( _fw_tb_effective_body_id() > 0 ) {
+		return;
+	}
+	$header_id = (int) FW_Theme_Builder_Resolver::header_id();
+	$footer_id = (int) FW_Theme_Builder_Resolver::footer_id();
+	if ( $header_id <= 0 && $footer_id <= 0 ) {
+		return;
+	}
+
+	// Pre-render the preset markup NOW, BEFORE output buffering starts. The preset
+	// render runs through do_shortcode(), which itself calls ob_start() — and PHP
+	// forbids ob_start() inside an output-buffering display handler ("Cannot use
+	// output buffering in output buffering display handlers"). So all rendering
+	// happens here and the flush callback only SPLICES the ready-made strings. This
+	// also lands the presets' render-time enqueues before wp_head().
+	$blocks = array( 'header' => '', 'footer' => '' );
+	if ( $header_id > 0 && function_exists( 'fw_ext_hfbuilder_render' ) ) {
+		$inner = fw_ext_hfbuilder_render( $header_id, 'header' );
+		if ( is_string( $inner ) && $inner !== '' ) {
+			$blocks['header'] = '<header class="fw-tb-header" role="banner">' . $inner . '</header>';
+		}
+	}
+	if ( $footer_id > 0 && function_exists( 'fw_ext_hfbuilder_render' ) ) {
+		$inner = fw_ext_hfbuilder_render( $footer_id, 'footer' );
+		if ( is_string( $inner ) && $inner !== '' ) {
+			$blocks['footer'] = '<footer class="fw-tb-footer" role="contentinfo">' . $inner . '</footer>';
+		}
+	}
+	if ( $blocks['header'] === '' && $blocks['footer'] === '' ) {
+		return; // nothing rendered (empty/unpublished presets) — leave the theme alone
+	}
+
+	$GLOBALS['_fw_tb_swap_blocks'] = $blocks;
+	ob_start( '_fw_tb_swap_buffer_cb' );
+}
+add_action( 'template_redirect', '_action_fw_tb_surgical_swap', 100 );
+
+/**
+ * Output-buffer callback (runs once at flush): splice the PRE-RENDERED preset
+ * header/footer blocks (built in _action_fw_tb_surgical_swap, before buffering) over
+ * the foreign theme's site <header>/<footer>. PURE STRING WORK ONLY — no rendering
+ * and no ob_start(), both of which are illegal inside an output-buffering handler.
+ *
+ * @internal
+ * @param string $html
+ * @return string
+ */
+function _fw_tb_swap_buffer_cb( $html ) {
+	if ( ! is_string( $html ) || $html === '' ) {
+		return $html;
+	}
+	$blocks = isset( $GLOBALS['_fw_tb_swap_blocks'] ) ? $GLOBALS['_fw_tb_swap_blocks'] : array();
+	$header = isset( $blocks['header'] ) ? (string) $blocks['header'] : '';
+	$footer = isset( $blocks['footer'] ) ? (string) $blocks['footer'] : '';
+
+	if ( $header !== '' ) {
+		$html = _fw_tb_swap_region( $html, 'header', $header, false );
+	}
+	if ( $footer !== '' ) {
+		$html = _fw_tb_swap_region( $html, 'footer', $footer, true );
+	}
+	return $html;
+}
+
+/**
+ * Replace ONE <$tag>…</$tag> region in $html with $replacement. $last picks the
+ * LAST occurrence (site footer) over the FIRST (site header). substr-based splice
+ * (not preg_replace) so `$`/`\` in the preset HTML are never mis-read as backrefs.
+ * Falls back to injecting at the matching <body> edge when no such tag exists (e.g.
+ * a block theme that emits no semantic <header>). Pattern is filterable.
+ *
+ * @internal
+ * @param string $html
+ * @param string $tag
+ * @param string $replacement
+ * @param bool   $last
+ * @return string
+ */
+function _fw_tb_swap_region( $html, $tag, $replacement, $last ) {
+	$pattern = apply_filters(
+		'fw_theme_builder_swap_pattern',
+		'~<' . $tag . '\b[^>]*>.*?</' . $tag . '>~is',
+		$tag,
+		$last
+	);
+
+	if ( preg_match_all( $pattern, $html, $m, PREG_OFFSET_CAPTURE ) && ! empty( $m[0] ) ) {
+		$hit   = $last ? end( $m[0] ) : $m[0][0];
+		$start = (int) $hit[1];
+		$len   = strlen( $hit[0] );
+		return substr( $html, 0, $start ) . $replacement . substr( $html, $start + $len );
+	}
+
+	// Fallback: no <$tag> found — inject at the body edge so the preset still shows.
+	if ( $last ) {
+		$pos = strripos( $html, '</body>' );
+		if ( $pos !== false ) {
+			return substr( $html, 0, $pos ) . $replacement . substr( $html, $pos );
+		}
+	} elseif ( preg_match( '~<body\b[^>]*>~i', $html, $bm, PREG_OFFSET_CAPTURE ) ) {
+		$pos = (int) $bm[0][1] + strlen( $bm[0][0] );
+		return substr( $html, 0, $pos ) . $replacement . substr( $html, $pos );
+	}
+	return $html;
+}
 
 /**
  * Body class hints (mirrors Divi's et-tb-* classes). When a Template applies to
@@ -279,6 +514,12 @@ add_filter( 'fw_ext_shortcodes_disable_shortcodes', '_filter_fw_theme_builder_dy
  * Builder, exactly like the Dynamic Content tab above. The Flexbox is the layout
  * primitive for building Header / Body / Footer parts, so its palette tab is HIDDEN
  * everywhere else (Pages, Posts, CPTs) and shown only in the part editors.
+ *
+ * NOTE: the flexbox ELEMENT itself lives in the CORE shortcodes extension
+ * (shortcodes/shortcodes/flexbox/ — see its AGENTS.md for why it is there, not
+ * here): it is a normal page-builder element and must render even when this
+ * optional, download-only extension is absent. This filter only hides it from the
+ * palette outside the part editors — it never unregisters it on the front end.
  *
  * Same admin-only contract: a front-end request returns the list untouched so any
  * preset/template already using a flexbox still renders. Disabling the 'flexbox'

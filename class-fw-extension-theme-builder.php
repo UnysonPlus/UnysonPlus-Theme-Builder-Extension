@@ -31,7 +31,7 @@
 class FW_Extension_Theme_Builder extends FW_Extension {
 
 	/** Part CPTs authored with the page builder. */
-	private $part_post_types = array( 'up_header', 'up_footer', 'up_body' );
+	private $part_post_types = array( 'up_header', 'up_body', 'up_footer' );
 
 	/** The bundling Template CPT (data store, no builder content). */
 	private $template_post_type = 'up_template';
@@ -142,6 +142,26 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 			),
 		) ) );
 
+		// Body before Footer so the Theme Builder submenu reads Header → Body →
+		// Footer → Templates (submenu order follows CPT registration order).
+		register_post_type( 'up_body', array_merge( $part_shared, array(
+			'labels' => array(
+				'name'               => __( 'Body Presets', 'fw' ),
+				'singular_name'      => __( 'Body Preset', 'fw' ),
+				'menu_name'          => __( 'Body Presets', 'fw' ),
+				'name_admin_bar'     => __( 'Body Preset', 'fw' ),
+				'add_new'            => __( 'Add New', 'fw' ),
+				'add_new_item'       => __( 'Add New Body Preset', 'fw' ),
+				'new_item'           => __( 'New Body Preset', 'fw' ),
+				'edit_item'          => __( 'Edit Body Preset', 'fw' ),
+				'view_item'          => __( 'View Body Preset', 'fw' ),
+				'all_items'          => __( 'Body Presets', 'fw' ),
+				'search_items'       => __( 'Search Body Presets', 'fw' ),
+				'not_found'          => __( 'No body presets found.', 'fw' ),
+				'not_found_in_trash' => __( 'No body presets found in Trash.', 'fw' ),
+			),
+		) ) );
+
 		register_post_type( 'up_footer', array_merge( $part_shared, array(
 			'labels' => array(
 				'name'               => __( 'Footer Presets', 'fw' ),
@@ -157,24 +177,6 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 				'search_items'       => __( 'Search Footer Presets', 'fw' ),
 				'not_found'          => __( 'No footer presets found.', 'fw' ),
 				'not_found_in_trash' => __( 'No footer presets found in Trash.', 'fw' ),
-			),
-		) ) );
-
-		register_post_type( 'up_body', array_merge( $part_shared, array(
-			'labels' => array(
-				'name'               => __( 'Body Templates', 'fw' ),
-				'singular_name'      => __( 'Body Template', 'fw' ),
-				'menu_name'          => __( 'Body Templates', 'fw' ),
-				'name_admin_bar'     => __( 'Body Template', 'fw' ),
-				'add_new'            => __( 'Add New', 'fw' ),
-				'add_new_item'       => __( 'Add New Body Template', 'fw' ),
-				'new_item'           => __( 'New Body Template', 'fw' ),
-				'edit_item'          => __( 'Edit Body Template', 'fw' ),
-				'view_item'          => __( 'View Body Template', 'fw' ),
-				'all_items'          => __( 'Body Templates', 'fw' ),
-				'search_items'       => __( 'Search Body Templates', 'fw' ),
-				'not_found'          => __( 'No body templates found.', 'fw' ),
-				'not_found_in_trash' => __( 'No body templates found in Trash.', 'fw' ),
 			),
 		) ) );
 
@@ -344,7 +346,7 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 		echo '<ul style="list-style:disc;margin-left:1.2em;">';
 		echo '<li>' . esc_html__( 'Build the content with the page builder.', 'fw' ) . '</li>';
 		if ( $is_body ) {
-			echo '<li>' . esc_html__( 'A Body Template replaces the page content area for the requests a Template assigns it to.', 'fw' ) . '</li>';
+			echo '<li>' . esc_html__( 'A Body Preset replaces the page content area for the requests a Template assigns it to.', 'fw' ) . '</li>';
 		} else {
 			echo '<li>' . esc_html__( 'Use the Header/Footer Elements (menu, logo, search, social, menu toggle) for navigation.', 'fw' ) . '</li>';
 		}
