@@ -82,7 +82,7 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 			// directly into the preset lists (no gallery; a one-time flag means a
 			// user's deletions/edits are never undone).
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-library.php';
-			new FW_Theme_Builder_Library();
+			new FW_Theme_Builder_Library( $this );
 
 			foreach ( $this->part_post_types as $pt ) {
 				add_action( 'add_meta_boxes_' . $pt, array( $this, '_action_add_usage_meta_box' ) );
