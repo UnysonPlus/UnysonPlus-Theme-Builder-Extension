@@ -607,7 +607,7 @@ class FW_Theme_Builder_Admin_Page {
 						<td class="column-primary" data-colname="<?php esc_attr_e( 'Name', 'fw' ); ?>">
 							<strong><a href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( $tpl->post_title !== '' ? $tpl->post_title : __( '(no title)', 'fw' ) ); ?></a></strong>
 							<div class="row-actions">
-								<span class="edit"><a href="<?php echo esc_url( $edit ); ?>"><?php esc_html_e( 'Edit', 'fw' ); ?></a> | </span>
+								<span class="edit"><a href="<?php echo esc_url( $edit ); ?>"><?php esc_html_e( 'Edit', 'fw' ); ?></a> | </span><?php if ( function_exists( 'fw_tb_preview_url' ) ) : ?><span class="fw-tb-preview-act"><a href="<?php echo esc_url( fw_tb_preview_url( array( 'template' => $tpl->ID ) ) ); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e( 'Preview this Template on the front page', 'fw' ); ?>"><?php esc_html_e( 'Preview', 'fw' ); ?></a> | </span><?php endif; ?>
 								<span class="duplicate"><a href="<?php echo esc_url( $this->row_action_url( 'duplicate', $tpl->ID ) ); ?>"><?php esc_html_e( 'Duplicate', 'fw' ); ?></a> | </span>
 								<span class="export"><a href="<?php echo esc_url( $this->row_action_url( 'export', $tpl->ID ) ); ?>" title="<?php esc_attr_e( 'Download as up-templates/*.json to ship in a theme', 'fw' ); ?>"><?php esc_html_e( 'Export', 'fw' ); ?></a> | </span>
 								<span class="trash"><a href="<?php echo esc_url( $this->row_action_url( 'delete', $tpl->ID ) ); ?>" class="fw-tb-delete submitdelete"><?php esc_html_e( 'Delete', 'fw' ); ?></a></span>

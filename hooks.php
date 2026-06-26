@@ -160,6 +160,112 @@ function _fw_tb_header_wrapper_atts( $header_id ) {
 	return ' class="' . esc_attr( implode( ' ', $classes ) ) . '"' . $attrs;
 }
 
+/* ----------------------------------------------------------------------- */
+/* Live preview (admin-gated) — see a Template/preset on a real page before  */
+/* it is published or assigned.                                              */
+/* ----------------------------------------------------------------------- */
+
+/**
+ * The parts a valid `?fw_tb_preview` front-end request wants forced, or null. Gated
+ * on `edit_theme_options` + a nonce, so only an editor previewing from the admin can
+ * trigger it. Shape matches the resolver.
+ *
+ * @internal
+ * @return array|null
+ */
+function _fw_tb_preview_request() {
+	if ( empty( $_GET['fw_tb_preview'] ) || is_admin() || ! current_user_can( 'edit_theme_options' ) ) {
+		return null;
+	}
+	$nonce = isset( $_GET['fw_tb_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['fw_tb_nonce'] ) ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'fw_tb_preview' ) ) {
+		return null;
+	}
+	$tpl = isset( $_GET['fw_tb_template'] ) ? (int) $_GET['fw_tb_template'] : 0;
+	if ( $tpl > 0 && function_exists( 'fw_get_db_post_option' ) ) {
+		return array(
+			'template_id' => $tpl,
+			'header_id'   => (int) fw_get_db_post_option( $tpl, 'tb_header_id' ),
+			'body_id'     => (int) fw_get_db_post_option( $tpl, 'tb_body_id' ),
+			'footer_id'   => (int) fw_get_db_post_option( $tpl, 'tb_footer_id' ),
+		);
+	}
+	return array(
+		'template_id' => 0,
+		'header_id'   => isset( $_GET['fw_tb_header'] ) ? (int) $_GET['fw_tb_header'] : 0,
+		'body_id'     => isset( $_GET['fw_tb_body'] ) ? (int) $_GET['fw_tb_body'] : 0,
+		'footer_id'   => isset( $_GET['fw_tb_footer'] ) ? (int) $_GET['fw_tb_footer'] : 0,
+	);
+}
+
+/**
+ * Override the resolver with the preview parts when a valid preview is requested.
+ *
+ * @internal
+ */
+function _filter_fw_tb_preview_resolve( $best ) {
+	$preview = _fw_tb_preview_request();
+	return ( null !== $preview ) ? $preview : $best;
+}
+add_filter( 'fw_theme_builder_resolved', '_filter_fw_tb_preview_resolve' );
+
+/**
+ * Build a front-end preview URL. `$args` accepts `template` => id, or any of
+ * `header`/`body`/`footer` => id. `$against` is the page URL to preview on (defaults
+ * to the site home).
+ *
+ * @param array  $args
+ * @param string $against
+ * @return string
+ */
+function fw_tb_preview_url( $args, $against = '' ) {
+	$query = array(
+		'fw_tb_preview' => 1,
+		'fw_tb_nonce'   => wp_create_nonce( 'fw_tb_preview' ),
+	);
+	foreach ( array( 'template', 'header', 'body', 'footer' ) as $k ) {
+		if ( ! empty( $args[ $k ] ) ) {
+			$query[ 'fw_tb_' . $k ] = (int) $args[ $k ];
+		}
+	}
+	return add_query_arg( $query, $against ? $against : home_url( '/' ) );
+}
+
+/**
+ * A small fixed "Preview" badge during a live preview, so it's obvious the page is a
+ * preview and not the published result. Rendered in wp_footer (fires in the theme
+ * page, the surgical-swap page, and the standalone document alike).
+ *
+ * @internal
+ */
+function _action_fw_tb_preview_badge() {
+	if ( null === _fw_tb_preview_request() ) {
+		return;
+	}
+	echo '<div class="fw-tb-preview-badge" style="position:fixed;z-index:99999;left:50%;bottom:18px;'
+		. 'transform:translateX(-50%);background:#1d2327;color:#fff;'
+		. 'font:600 12px/1 -apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;'
+		. 'padding:10px 18px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.28)">'
+		. esc_html__( 'Theme Builder — Preview', 'fw' ) . '</div>';
+}
+add_action( 'wp_footer', '_action_fw_tb_preview_badge', 99 );
+
+/**
+ * Add a **Preview** row action to the Header / Body / Footer preset lists.
+ *
+ * @internal
+ */
+function _filter_fw_tb_preset_row_actions( $actions, $post ) {
+	$kinds = array( 'up_header' => 'header', 'up_body' => 'body', 'up_footer' => 'footer' );
+	if ( isset( $kinds[ $post->post_type ] ) && current_user_can( 'edit_theme_options' ) ) {
+		$url = fw_tb_preview_url( array( $kinds[ $post->post_type ] => $post->ID ) );
+		$actions['fw_tb_preview'] = '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">'
+			. esc_html__( 'Preview', 'fw' ) . '</a>';
+	}
+	return $actions;
+}
+add_filter( 'post_row_actions', '_filter_fw_tb_preset_row_actions', 10, 2 );
+
 /**
  * True when a body preset contains a [post_content] element. Such a body WRAPS the
  * queried page's own content (so it may apply even to page-builder pages); one

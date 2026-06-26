@@ -68,9 +68,9 @@ class FW_Theme_Builder_Resolver {
 		}
 
 		// Resolution is a front-end concern. Bail in wp-admin and on request types
-		// a Template must never hijack — oEmbed responses and feeds (mirrors Divi's
-		// preview/embed escape hatches). REST is intentionally left alone so the
-		// block editor / front-end fetches still see a normal page.
+		// a Template must never hijack — oEmbed responses and feeds. REST is
+		// intentionally left alone so the block editor / front-end fetches still see a
+		// normal page.
 		if ( is_admin() || is_embed() || is_feed() || ! post_type_exists( 'up_template' ) ) {
 			return self::$cache = null;
 		}
@@ -113,7 +113,15 @@ class FW_Theme_Builder_Resolver {
 			}
 		}
 
-		return self::$cache = $best;
+		/**
+		 * Filter the resolved Template parts for this request. The admin-gated live
+		 * preview (see hooks.php) uses this to force a Template/preset onto a real page
+		 * before it's published/assigned. `$best` is the normally-resolved array (or
+		 * null when nothing matched); return an array of the same shape to override.
+		 *
+		 * @param array|null $best [ template_id, header_id, body_id, footer_id ] or null.
+		 */
+		return self::$cache = apply_filters( 'fw_theme_builder_resolved', $best );
 	}
 
 	/** Convenience: winning header part id for this request (0 = inherit). */
