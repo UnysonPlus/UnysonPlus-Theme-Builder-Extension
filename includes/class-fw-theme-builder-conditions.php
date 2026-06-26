@@ -36,13 +36,25 @@ class FW_Theme_Builder_Conditions {
 	 * @return array<string,string>
 	 */
 	private static function scope_choices() {
-		return array(
+		$choices = array(
 			'df'            => __( 'Entire site', 'fw' ),
 			'ct:front_page' => __( 'Front page', 'fw' ),
 			'ct:blog_index' => __( 'Blog (posts) index', 'fw' ),
 			'ct:search'     => __( 'Search results', 'fw' ),
 			'ct:error_404'  => __( '404 (not found)', 'fw' ),
 		);
+		if ( self::woo_active() ) {
+			$choices['ct:woo_shop']     = __( 'Shop page (WooCommerce)', 'fw' );
+			$choices['ct:woo_cart']     = __( 'Cart (WooCommerce)', 'fw' );
+			$choices['ct:woo_checkout'] = __( 'Checkout (WooCommerce)', 'fw' );
+			$choices['ct:woo_account']  = __( 'My Account (WooCommerce)', 'fw' );
+		}
+		return $choices;
+	}
+
+	/** True when WooCommerce is active (its conditional tags are available). */
+	private static function woo_active() {
+		return function_exists( 'is_shop' ) || class_exists( 'WooCommerce' );
 	}
 
 	/**
@@ -123,7 +135,7 @@ class FW_Theme_Builder_Conditions {
 	public static function side_options( $side ) {
 		$p = $side . '_';
 
-		return array(
+		$opts = array(
 			$p . 'scope' => array(
 				'type'    => 'checkboxes',
 				'label'   => __( 'Scopes', 'fw' ),
@@ -181,6 +193,30 @@ class FW_Theme_Builder_Conditions {
 				'value'       => array(),
 			),
 		);
+
+		// WooCommerce product categories (the product taxonomy), only when Woo is active.
+		if ( self::woo_active() ) {
+			$opts[ $p . 'in_product_cat' ] = array(
+				'type'        => 'multi-select',
+				'label'       => __( 'Products in product categories', 'fw' ),
+				'desc'        => __( 'Single products that belong to the chosen product categories.', 'fw' ),
+				'population'  => 'taxonomy',
+				'source'      => 'product_cat',
+				'prepopulate' => 10,
+				'value'       => array(),
+			);
+			$opts[ $p . 'product_cat_archives' ] = array(
+				'type'        => 'multi-select',
+				'label'       => __( 'Product category archives', 'fw' ),
+				'desc'        => __( 'The product category archive pages themselves.', 'fw' ),
+				'population'  => 'taxonomy',
+				'source'      => 'product_cat',
+				'prepopulate' => 10,
+				'value'       => array(),
+			);
+		}
+
+		return $opts;
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -227,6 +263,14 @@ class FW_Theme_Builder_Conditions {
 		if ( $cat_archives ) {
 			$rules[] = array( 'type' => 'tax', 'sub_type' => 'category', 'ids' => $cat_archives );
 		}
+		$in_pcat = array_map( 'intval', (array) fw_akg( $p . 'in_product_cat', $values, array() ) );
+		if ( $in_pcat ) {
+			$rules[] = array( 'type' => 'tx', 'sub_type' => 'product_cat', 'ids' => $in_pcat );
+		}
+		$pcat_archives = array_map( 'intval', (array) fw_akg( $p . 'product_cat_archives', $values, array() ) );
+		if ( $pcat_archives ) {
+			$rules[] = array( 'type' => 'tax', 'sub_type' => 'product_cat', 'ids' => $pcat_archives );
+		}
 
 		return $rules;
 	}
@@ -248,6 +292,8 @@ class FW_Theme_Builder_Conditions {
 			$p . 'children_of'       => array(),
 			$p . 'in_categories'     => array(),
 			$p . 'category_archives' => array(),
+			$p . 'in_product_cat'    => array(),
+			$p . 'product_cat_archives' => array(),
 		);
 
 		foreach ( (array) $rules as $rule ) {
@@ -276,10 +322,12 @@ class FW_Theme_Builder_Conditions {
 					$v[ $p . 'archives' ][] = $sub;
 					break;
 				case 'tx':
-					$v[ $p . 'in_categories' ] = array_merge( $v[ $p . 'in_categories' ], $ids );
+					$tx_field = ( $sub === 'product_cat' ) ? 'in_product_cat' : 'in_categories';
+					$v[ $p . $tx_field ] = array_merge( $v[ $p . $tx_field ], $ids );
 					break;
 				case 'tax':
-					$v[ $p . 'category_archives' ] = array_merge( $v[ $p . 'category_archives' ], $ids );
+					$tax_field = ( $sub === 'product_cat' ) ? 'product_cat_archives' : 'category_archives';
+					$v[ $p . $tax_field ] = array_merge( $v[ $p . $tax_field ], $ids );
 					break;
 			}
 		}

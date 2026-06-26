@@ -307,6 +307,15 @@ class FW_Theme_Builder_Resolver {
 				return is_author();
 			case 'date':
 				return is_date();
+			// WooCommerce pages — guarded so they are simply false when Woo is inactive.
+			case 'woo_shop':
+				return function_exists( 'is_shop' ) && is_shop();
+			case 'woo_cart':
+				return function_exists( 'is_cart' ) && is_cart();
+			case 'woo_checkout':
+				return function_exists( 'is_checkout' ) && is_checkout();
+			case 'woo_account':
+				return function_exists( 'is_account_page' ) && is_account_page();
 		}
 		return false;
 	}
