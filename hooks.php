@@ -330,6 +330,79 @@ function _action_fw_tb_preset_custom_js() {
 add_action( 'wp_footer', '_action_fw_tb_preset_custom_js', 99 );
 
 /**
+ * Front-end "what renders here?" debugger — an admin-bar node (editors only) that
+ * shows the resolved Theme Builder Template for the current page, its header / body /
+ * footer, and every matching or excluded Template with its specificity score, so
+ * overlapping conditions are easy to reason about. No-op when there are no Templates.
+ *
+ * @internal
+ * @param WP_Admin_Bar $bar
+ */
+function _action_fw_tb_admin_bar( $bar ) {
+	if ( is_admin() || ! current_user_can( 'edit_theme_options' ) || ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return;
+	}
+	$debug = FW_Theme_Builder_Resolver::debug();
+	if ( null === $debug ) {
+		return;
+	}
+	$resolved = $debug['resolved'];
+	$win_id   = $resolved ? (int) $resolved['template_id'] : 0;
+
+	$bar->add_node( array(
+		'id'    => 'fw-tb-debug',
+		'title' => $win_id
+			? esc_html( sprintf( __( 'Theme Builder: %s', 'fw' ), get_the_title( $win_id ) ) )
+			: esc_html__( 'Theme Builder: no Template (site header/footer)', 'fw' ),
+	) );
+
+	if ( $win_id ) {
+		$parts = array( 'header_id' => __( 'Header', 'fw' ), 'body_id' => __( 'Body', 'fw' ), 'footer_id' => __( 'Footer', 'fw' ) );
+		foreach ( $parts as $k => $label ) {
+			$pid = (int) $resolved[ $k ];
+			$val = $pid ? get_the_title( $pid ) : ( 'body_id' === $k ? __( '— none —', 'fw' ) : __( '— inherit —', 'fw' ) );
+			$bar->add_node( array(
+				'parent' => 'fw-tb-debug',
+				'id'     => 'fw-tb-part-' . $k,
+				'title'  => esc_html( $label . ': ' . $val ),
+				'href'   => $pid ? get_edit_post_link( $pid ) : false,
+			) );
+		}
+		$bar->add_node( array(
+			'parent' => 'fw-tb-debug',
+			'id'     => 'fw-tb-edit-tpl',
+			'title'  => esc_html__( 'Edit this Template ↗', 'fw' ),
+			'href'   => add_query_arg( array( 'page' => 'fw-theme-builder', 'view' => 'edit', 'id' => $win_id ), admin_url( 'admin.php' ) ),
+		) );
+	}
+
+	$shown = 0;
+	foreach ( $debug['candidates'] as $c ) {
+		if ( $c['score'] < 0 && ! $c['excluded'] ) {
+			continue;
+		}
+		$note = $c['excluded']
+			? __( 'excluded', 'fw' )
+			: ( $c['id'] === $win_id ? __( 'WINS', 'fw' ) : sprintf( __( 'score %d', 'fw' ), $c['score'] ) );
+		$bar->add_node( array(
+			'parent' => 'fw-tb-debug',
+			'id'     => 'fw-tb-cand-' . $c['id'],
+			'title'  => esc_html( '• ' . $c['name'] . ' — ' . $note ),
+			'href'   => add_query_arg( array( 'page' => 'fw-theme-builder', 'view' => 'edit', 'id' => $c['id'] ), admin_url( 'admin.php' ) ),
+		) );
+		$shown++;
+	}
+	if ( ! $shown && ! $win_id ) {
+		$bar->add_node( array(
+			'parent' => 'fw-tb-debug',
+			'id'     => 'fw-tb-nomatch',
+			'title'  => esc_html__( 'No Template matched this request.', 'fw' ),
+		) );
+	}
+}
+add_action( 'admin_bar_menu', '_action_fw_tb_admin_bar', 100 );
+
+/**
  * True when a body preset contains a [post_content] element. Such a body WRAPS the
  * queried page's own content (so it may apply even to page-builder pages); one
  * without it fully REPLACES the content (so it skips builder pages). Cheap string

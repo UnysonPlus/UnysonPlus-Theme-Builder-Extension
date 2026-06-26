@@ -142,6 +142,49 @@ class FW_Theme_Builder_Resolver {
 		return $r ? (int) $r['body_id'] : 0;
 	}
 
+	/**
+	 * Debug data for the front-end "what renders here?" tool: every published
+	 * Template with its exclusion / use-on score for THIS request, ranked most
+	 * specific first, plus the resolved winner. Front-end only; null when there are
+	 * no Templates.
+	 *
+	 * @return array|null  [ resolved => array|null, candidates => [ {id,name,excluded,score} ] ]
+	 */
+	public static function debug() {
+		if ( is_admin() || ! post_type_exists( 'up_template' ) ) {
+			return null;
+		}
+		$ids = get_posts( array(
+			'post_type'        => 'up_template',
+			'post_status'      => 'publish',
+			'numberposts'      => -1,
+			'fields'           => 'ids',
+			'suppress_filters' => false,
+		) );
+		if ( ! $ids ) {
+			return null;
+		}
+		$candidates = array();
+		foreach ( $ids as $tid ) {
+			$cond     = self::get_conditions( $tid );
+			$excluded = self::any_match( isset( $cond['exclude_from'] ) ? $cond['exclude_from'] : array() );
+			$score    = $excluded ? -1 : self::best_match_score( isset( $cond['use_on'] ) ? $cond['use_on'] : array() );
+			$candidates[] = array(
+				'id'       => (int) $tid,
+				'name'     => get_the_title( $tid ),
+				'excluded' => $excluded,
+				'score'    => (int) $score, // -1 = no use_on rule matched
+			);
+		}
+		usort( $candidates, function ( $a, $b ) {
+			return $b['score'] - $a['score'];
+		} );
+		return array(
+			'resolved'   => self::resolve(),
+			'candidates' => $candidates,
+		);
+	}
+
 	/** Reset the request cache (tests / preview). */
 	public static function flush() {
 		self::$cache = false;
