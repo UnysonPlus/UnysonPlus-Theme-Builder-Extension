@@ -78,6 +78,11 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-admin-page.php';
 			$this->admin_page = new FW_Theme_Builder_Admin_Page( $this );
 
+			// Preset Library — bundled starter Header/Body/Footer designs + the
+			// "Preset Library" gallery screen (browse → Insert an editable copy).
+			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-library.php';
+			new FW_Theme_Builder_Library();
+
 			foreach ( $this->part_post_types as $pt ) {
 				add_action( 'add_meta_boxes_' . $pt, array( $this, '_action_add_usage_meta_box' ) );
 			}

@@ -1,0 +1,19 @@
+{
+	"name": "Simple Header",
+	"kind": "header",
+	"description": "A clean top bar — brand on the left, inline navigation on the right.",
+	"meta": {
+		"hf_type": "standard-top",
+		"hf_behavior": "sticky"
+	},
+	"json": [
+		{
+			"type": "flexbox",
+			"atts": { "html_tag": "nav", "direction": "row", "justify_content": "between", "align_items": "center" },
+			"_items": [
+				{ "type": "simple", "shortcode": "text_block", "atts": { "text": "<p><strong>Brand</strong></p>" }, "_items": [] },
+				{ "type": "simple", "shortcode": "text_block", "atts": { "text": "<p>Home &nbsp;&nbsp; About &nbsp;&nbsp; Services &nbsp;&nbsp; Contact</p>" }, "_items": [] }
+			]
+		}
+	]
+}

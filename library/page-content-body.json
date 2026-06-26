@@ -1,0 +1,8 @@
+{
+	"name": "Page Content (wrapper)",
+	"kind": "body",
+	"description": "A thin body that renders the page's own builder content via Post Content. Pair it with a header and footer to wrap any page in your chrome.",
+	"json": [
+		{ "type": "simple", "shortcode": "post_content", "atts": {}, "_items": [] }
+	]
+}

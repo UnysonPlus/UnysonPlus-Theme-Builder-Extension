@@ -1,0 +1,14 @@
+{
+	"name": "Minimal Footer",
+	"kind": "footer",
+	"description": "A centered footer with a copyright line — a clean baseline to build on.",
+	"json": [
+		{
+			"type": "flexbox",
+			"atts": { "html_tag": "footer", "direction": "column", "justify_content": "center", "align_items": "center" },
+			"_items": [
+				{ "type": "simple", "shortcode": "text_block", "atts": { "text": "<p>&copy; 2026 Your Company. All rights reserved.</p>" }, "_items": [] }
+			]
+		}
+	]
+}

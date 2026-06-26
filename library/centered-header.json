@@ -1,0 +1,19 @@
+{
+	"name": "Centered Header",
+	"kind": "header",
+	"description": "A stacked, centered header — brand on top with the navigation row beneath it.",
+	"meta": {
+		"hf_type": "standard-top",
+		"hf_behavior": "static"
+	},
+	"json": [
+		{
+			"type": "flexbox",
+			"atts": { "html_tag": "header", "direction": "column", "justify_content": "center", "align_items": "center" },
+			"_items": [
+				{ "type": "simple", "shortcode": "text_block", "atts": { "text": "<p style=\"font-size:24px\"><strong>Brand</strong></p>" }, "_items": [] },
+				{ "type": "simple", "shortcode": "text_block", "atts": { "text": "<p>Home &nbsp;&nbsp; About &nbsp;&nbsp; Services &nbsp;&nbsp; Contact</p>" }, "_items": [] }
+			]
+		}
+	]
+}
