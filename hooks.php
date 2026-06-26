@@ -266,6 +266,69 @@ function _filter_fw_tb_preset_row_actions( $actions, $post ) {
 }
 add_filter( 'post_row_actions', '_filter_fw_tb_preset_row_actions', 10, 2 );
 
+/* ----------------------------------------------------------------------- */
+/* Per-preset Custom CSS / JS — travels with the preset, output only when it  */
+/* renders, on any theme.                                                     */
+/* ----------------------------------------------------------------------- */
+
+/**
+ * The part post ids (header/body/footer) that actually render for this request,
+ * de-duped. Uses the theme's own resolution when native (so per-page header/footer
+ * overrides are respected) and the resolver otherwise — and during a live preview,
+ * which the resolver carries.
+ *
+ * @internal
+ * @return int[]
+ */
+function _fw_tb_rendering_part_ids() {
+	if ( ! class_exists( 'FW_Theme_Builder_Resolver' ) ) {
+		return array();
+	}
+	$preview = function_exists( '_fw_tb_preview_request' ) && null !== _fw_tb_preview_request();
+	$native  = function_exists( 'unysonplus_get_active_preset_id' ) && ! $preview;
+	$header  = $native ? (int) unysonplus_get_active_preset_id( 'header' ) : (int) FW_Theme_Builder_Resolver::header_id();
+	$footer  = $native ? (int) unysonplus_get_active_preset_id( 'footer' ) : (int) FW_Theme_Builder_Resolver::footer_id();
+	$body    = (int) FW_Theme_Builder_Resolver::body_id();
+	return array_values( array_unique( array_filter( array( $header, $body, $footer ) ) ) );
+}
+
+/**
+ * Output each rendering preset's Custom CSS in the head (any theme). Editor-authored
+ * (edit_theme_options), so emitted as-is.
+ *
+ * @internal
+ */
+function _action_fw_tb_preset_custom_css() {
+	if ( is_admin() || ! function_exists( 'fw_get_db_post_option' ) ) {
+		return;
+	}
+	foreach ( _fw_tb_rendering_part_ids() as $pid ) {
+		$css = trim( (string) fw_get_db_post_option( $pid, 'custom_css' ) );
+		if ( '' !== $css ) {
+			echo "\n" . '<style id="fw-tb-preset-' . (int) $pid . '-css">' . "\n" . $css . "\n" . '</style>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput — editor CSS
+		}
+	}
+}
+add_action( 'wp_head', '_action_fw_tb_preset_custom_css', 99 );
+
+/**
+ * Output each rendering preset's Custom JS before </body> (any theme).
+ *
+ * @internal
+ */
+function _action_fw_tb_preset_custom_js() {
+	if ( is_admin() || ! function_exists( 'fw_get_db_post_option' ) ) {
+		return;
+	}
+	foreach ( _fw_tb_rendering_part_ids() as $pid ) {
+		$js = trim( (string) fw_get_db_post_option( $pid, 'custom_js' ) );
+		if ( '' !== $js ) {
+			echo "\n" . '<script id="fw-tb-preset-' . (int) $pid . '-js">' . "\n" . $js . "\n" . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput — editor JS
+		}
+	}
+}
+add_action( 'wp_footer', '_action_fw_tb_preset_custom_js', 99 );
+
 /**
  * True when a body preset contains a [post_content] element. Such a body WRAPS the
  * queried page's own content (so it may apply even to page-builder pages); one

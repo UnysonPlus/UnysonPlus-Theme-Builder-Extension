@@ -68,6 +68,11 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 		// archive/blog post-loop card. Read at render by views/body-template.php.
 		add_filter( 'fw_post_options', array( $this, '_filter_loop_layout_options' ), 10, 2 );
 
+		// Custom CSS / JS box (all three part types): per-preset code that travels with
+		// the preset and is output (head / before </body>) only when it renders — on
+		// any theme. Read at render in hooks.php.
+		add_filter( 'fw_post_options', array( $this, '_filter_custom_code_options' ), 10, 2 );
+
 		if ( is_admin() ) {
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-conditions.php';
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-admin-page.php';
@@ -310,6 +315,53 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 								'medium' => __( 'Medium', 'fw' ),
 								'large'  => __( 'Large', 'fw' ),
 							),
+						),
+					),
+				),
+			),
+		);
+
+		return $options;
+	}
+
+	/**
+	 * Custom CSS / JS box (Header / Body / Footer presets). Per-preset code stored
+	 * under leaf ids custom_css / custom_js — output at render time (head / before
+	 * </body>) only when the preset renders, on ANY theme. Because it lives in the
+	 * preset's meta it travels with export/import and any bundled library. Read in
+	 * hooks.php (_action_fw_tb_preset_custom_css / _js).
+	 *
+	 * @internal
+	 */
+	public function _filter_custom_code_options( $options, $post_type ) {
+		if ( ! in_array( $post_type, array( 'up_header', 'up_body', 'up_footer' ), true ) ) {
+			return $options;
+		}
+
+		$options['up_tb_custom_code'] = array(
+			'title'    => __( 'Custom CSS & JS', 'fw' ),
+			'type'     => 'box',
+			'context'  => 'normal',
+			'priority' => 'low',
+			'options'  => array(
+				'group_tb_custom_code' => array(
+					'type'    => 'group',
+					'options' => array(
+						'custom_css' => array(
+							'label'  => __( 'Custom CSS', 'fw' ),
+							'type'   => 'code-editor',
+							'mode'   => 'css',
+							'height' => 180,
+							'value'  => '',
+							'desc'   => __( 'Output in the &lt;head&gt; only when this preset renders — on any theme. Target the CSS classes you used in the preset. No &lt;style&gt; tag needed.', 'fw' ),
+						),
+						'custom_js' => array(
+							'label'  => __( 'Custom JavaScript', 'fw' ),
+							'type'   => 'code-editor',
+							'mode'   => 'javascript',
+							'height' => 180,
+							'value'  => '',
+							'desc'   => __( 'Output before &lt;/body&gt; only when this preset renders. No &lt;script&gt; tag needed.', 'fw' ),
 						),
 					),
 				),
