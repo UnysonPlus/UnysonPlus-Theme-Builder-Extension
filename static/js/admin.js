@@ -11,15 +11,15 @@ jQuery(function ($) {
 	var cfg  = window.fwThemeBuilder || {};
 	var i18n = cfg.i18n || {};
 
-	/* ---- delete confirm ---- */
+	/* ---- delete confirm ----
+	 * Use the native browser confirm. Unyson's fw.confirm() modal isn't enqueued on
+	 * this custom admin screen, so it would render its message as a stray, unstyled
+	 * <p> at the bottom of the page instead of a dialog. The delete link already
+	 * carries the nonce, so we only need to cancel the click when the user declines. */
 	var delMsg = cfg.confirmDelete || 'Delete this Template?';
 	$(document).on('click', '.fw-tb-delete', function (e) {
-		e.preventDefault();
-		var href = this.href;
-		if (window.fw && typeof fw.confirm === 'function') {
-			fw.confirm(delMsg, function () { window.location.href = href; });
-		} else if (window.confirm(delMsg)) {
-			window.location.href = href;
+		if (!window.confirm(delMsg)) {
+			e.preventDefault();
 		}
 	});
 
