@@ -3,30 +3,48 @@
 }
 
 /**
- * Preset Library — ready-made Header / Body / Footer designs bundled with the
- * extension (one JSON per design under /library). The "Preset Library" admin screen
- * lists them as cards; **Insert** creates an editable copy (a new up_header /
- * up_body / up_footer post) the user then customizes in the builder. A library JSON
- * looks like:
+ * Starter presets — a few ready-made Header / Body / Footer designs bundled with the
+ * extension (one JSON per design under /library). They are seeded ONCE, as real
+ * published up_header / up_body / up_footer posts, so they appear directly in the
+ * Header / Body / Footer Presets lists for the user to edit, duplicate, or delete.
+ * There is no manual-edit guard: a one-time option flag means a user's deletions or
+ * edits are never undone (re-seeding never happens). A design JSON looks like:
  *
  *   { "name": "...", "kind": "header|body|footer", "description": "...",
  *     "meta": { "hf_type": "...", "hf_behavior": "...", "custom_css": "..." },
  *     "json": [ <page-builder tree> ] }
  *
- * Adding a design = dropping another *.json in /library. The insert reuses the same
- * storage the seeder uses (the `page-builder` post option), so the copy opens in the
- * builder like any other preset.
+ * Adding a starter = dropping another *.json in /library. Seeding reuses the same
+ * storage as the seeder (the `page-builder` post option), so a seeded preset opens in
+ * the builder like any other.
  */
 class FW_Theme_Builder_Library {
 
-	const MENU_SLUG = 'fw-theme-builder-library';
-	const CAP       = 'edit_theme_options';
+	/** One-time flag option: starter presets have been seeded. */
+	const SEED_FLAG = 'fw_tb_starter_presets_seeded';
 
 	private static $cpt_map = array( 'header' => 'up_header', 'body' => 'up_body', 'footer' => 'up_footer' );
 
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, '_action_menu' ), 20 );
-		add_action( 'wp_ajax_fw_tb_library_insert', array( $this, '_ajax_insert' ) );
+		add_action( 'admin_init', array( $this, '_maybe_seed_starters' ) );
+	}
+
+	/**
+	 * Seed the bundled starter presets ONCE, directly into the preset lists. Guarded
+	 * by a one-time option (set BEFORE seeding so concurrent loads can't double-seed,
+	 * and so a user's later deletions are never re-created). Only an editor of theme
+	 * options triggers it.
+	 *
+	 * @internal
+	 */
+	public function _maybe_seed_starters() {
+		if ( get_option( self::SEED_FLAG ) || ! current_user_can( 'edit_theme_options' ) ) {
+			return;
+		}
+		update_option( self::SEED_FLAG, time() );
+		foreach ( self::items() as $it ) {
+			self::insert( $it['slug'] );
+		}
 	}
 
 	/** Absolute path to the bundled /library directory. */
@@ -113,90 +131,4 @@ class FW_Theme_Builder_Library {
 		);
 	}
 
-	/** Register the "Preset Library" submenu under Theme Builder. */
-	public function _action_menu() {
-		add_submenu_page(
-			'fw-theme-builder',
-			__( 'Preset Library', 'fw' ),
-			__( 'Preset Library', 'fw' ),
-			self::CAP,
-			self::MENU_SLUG,
-			array( $this, '_render' )
-		);
-	}
-
-	/** The card-grid gallery screen. */
-	public function _render() {
-		$items = self::items();
-		$badge = array(
-			'header' => __( 'Header', 'fw' ),
-			'body'   => __( 'Body', 'fw' ),
-			'footer' => __( 'Footer', 'fw' ),
-		);
-		$nonce = wp_create_nonce( 'fw_tb_library_insert' );
-		?>
-		<div class="wrap fw-tb-library">
-			<h1><?php esc_html_e( 'Preset Library', 'fw' ); ?></h1>
-			<p class="description" style="max-width:760px">
-				<?php esc_html_e( 'Ready-made Header, Body and Footer designs. Insert one to create an editable copy — it opens straight in the builder so you can customize it, then assign it from a Template. The original library design is never changed.', 'fw' ); ?>
-			</p>
-
-			<?php if ( empty( $items ) ) : ?>
-				<p><?php esc_html_e( 'No library presets are available.', 'fw' ); ?></p>
-			<?php else : ?>
-				<div class="fw-tb-lib-grid">
-					<?php foreach ( $items as $it ) : ?>
-						<div class="fw-tb-lib-card" data-kind="<?php echo esc_attr( $it['kind'] ); ?>">
-							<span class="fw-tb-lib-badge fw-tb-lib-badge--<?php echo esc_attr( $it['kind'] ); ?>"><?php echo esc_html( isset( $badge[ $it['kind'] ] ) ? $badge[ $it['kind'] ] : $it['kind'] ); ?></span>
-							<h3><?php echo esc_html( $it['name'] ); ?></h3>
-							<p><?php echo esc_html( $it['description'] ); ?></p>
-							<button type="button" class="button button-primary fw-tb-lib-insert" data-slug="<?php echo esc_attr( $it['slug'] ); ?>"><?php esc_html_e( 'Insert', 'fw' ); ?></button>
-						</div>
-					<?php endforeach; ?>
-				</div>
-			<?php endif; ?>
-		</div>
-
-		<style>
-			.fw-tb-lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;margin-top:20px}
-			.fw-tb-lib-card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:18px;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.04)}
-			.fw-tb-lib-card h3{margin:6px 0 6px;padding-right:70px}
-			.fw-tb-lib-card p{color:#646970;min-height:42px;margin:0 0 14px}
-			.fw-tb-lib-badge{position:absolute;top:16px;right:16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#2271b1;background:#f0f6fc;border:1px solid #c5d9ed;border-radius:999px;padding:2px 10px}
-			.fw-tb-lib-badge--body{color:#1a7f37;background:#edfaef;border-color:#bfe3c5}
-			.fw-tb-lib-badge--footer{color:#8a5400;background:#fcf6e9;border-color:#e6d5af}
-		</style>
-		<script>
-		( function ( $ ) {
-			$( '.fw-tb-lib-insert' ).on( 'click', function () {
-				var $b = $( this ), label = $b.text();
-				$b.prop( 'disabled', true ).text( <?php echo wp_json_encode( __( 'Inserting…', 'fw' ) ); ?> );
-				$.post( ajaxurl, { action: 'fw_tb_library_insert', slug: $b.data( 'slug' ), _wpnonce: <?php echo wp_json_encode( $nonce ); ?> } )
-					.done( function ( r ) {
-						if ( r && r.success && r.data && r.data.edit_url ) {
-							window.location = r.data.edit_url;
-						} else {
-							window.alert( ( r && r.data && r.data.message ) || 'Error' );
-							$b.prop( 'disabled', false ).text( label );
-						}
-					} )
-					.fail( function () { window.alert( 'Error' ); $b.prop( 'disabled', false ).text( label ); } );
-			} );
-		}( jQuery ) );
-		</script>
-		<?php
-	}
-
-	/** AJAX: insert a library preset, return its edit URL. */
-	public function _ajax_insert() {
-		check_ajax_referer( 'fw_tb_library_insert' );
-		if ( ! current_user_can( self::CAP ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'fw' ) ) );
-		}
-		$res = self::insert( isset( $_POST['slug'] ) ? sanitize_file_name( wp_unslash( $_POST['slug'] ) ) : '' );
-		if ( is_wp_error( $res ) ) {
-			wp_send_json_error( array( 'message' => $res->get_error_message() ) );
-		}
-		wp_send_json_success( $res );
-	}
 }

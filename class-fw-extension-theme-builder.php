@@ -78,8 +78,9 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-admin-page.php';
 			$this->admin_page = new FW_Theme_Builder_Admin_Page( $this );
 
-			// Preset Library — bundled starter Header/Body/Footer designs + the
-			// "Preset Library" gallery screen (browse → Insert an editable copy).
+			// Starter presets — seed a few ready-made Header/Body/Footer designs ONCE,
+			// directly into the preset lists (no gallery; a one-time flag means a
+			// user's deletions/edits are never undone).
 			require_once dirname( __FILE__ ) . '/includes/class-fw-theme-builder-library.php';
 			new FW_Theme_Builder_Library();
 
