@@ -151,8 +151,15 @@ class FW_Theme_Builder_Resolver {
 	 * @return array|null  [ resolved => array|null, candidates => [ {id,name,excluded,score} ] ]
 	 */
 	public static function debug() {
+		static $cache;
+		static $done = false;
+		if ( $done ) {
+			return $cache;
+		}
+		$done  = true;
+		$cache = null;
 		if ( is_admin() || ! post_type_exists( 'up_template' ) ) {
-			return null;
+			return $cache;
 		}
 		$ids = get_posts( array(
 			'post_type'        => 'up_template',
@@ -162,7 +169,7 @@ class FW_Theme_Builder_Resolver {
 			'suppress_filters' => false,
 		) );
 		if ( ! $ids ) {
-			return null;
+			return $cache;
 		}
 		$candidates = array();
 		foreach ( $ids as $tid ) {
@@ -179,10 +186,11 @@ class FW_Theme_Builder_Resolver {
 		usort( $candidates, function ( $a, $b ) {
 			return $b['score'] - $a['score'];
 		} );
-		return array(
+		$cache = array(
 			'resolved'   => self::resolve(),
 			'candidates' => $candidates,
 		);
+		return $cache;
 	}
 
 	/** Reset the request cache (tests / preview). */

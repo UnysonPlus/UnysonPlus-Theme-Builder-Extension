@@ -21,15 +21,6 @@
  */
 class FW_Theme_Builder_Conditions {
 
-	/** @var array<string,array{cb_id:string,token:string}>  scope token registry */
-	private static $scope_defs = array(
-		'df'             => array( 'label_key' => 'entire_site' ),
-		'ct:front_page'  => array( 'label_key' => 'front_page' ),
-		'ct:blog_index'  => array( 'label_key' => 'blog_index' ),
-		'ct:search'      => array( 'label_key' => 'search' ),
-		'ct:error_404'   => array( 'label_key' => 'error_404' ),
-	);
-
 	/**
 	 * Human labels for the scope tokens.
 	 *
@@ -332,6 +323,14 @@ class FW_Theme_Builder_Conditions {
 			}
 		}
 
+		// De-dupe the id lists so a hand-crafted/imported tb_conditions with repeated
+		// ids doesn't prefill the multi-selects with duplicates.
+		foreach ( $v as $k => $val ) {
+			if ( is_array( $val ) ) {
+				$v[ $k ] = array_values( array_unique( $val ) );
+			}
+		}
+
 		return $v;
 	}
 
@@ -419,10 +418,14 @@ class FW_Theme_Builder_Conditions {
 					$parts[] = sprintf( __( '%s archive', 'fw' ), $lbl );
 					break;
 				case 'tx':
-					$parts[] = sprintf( _n( '%d category', '%d categories', count( $ids ), 'fw' ), count( $ids ) );
+					$parts[] = ( 'product_cat' === $sub )
+						? sprintf( _n( '%d product category', '%d product categories', count( $ids ), 'fw' ), count( $ids ) )
+						: sprintf( _n( '%d category', '%d categories', count( $ids ), 'fw' ), count( $ids ) );
 					break;
 				case 'tax':
-					$parts[] = sprintf( _n( '%d category archive', '%d category archives', count( $ids ), 'fw' ), count( $ids ) );
+					$parts[] = ( 'product_cat' === $sub )
+						? sprintf( _n( '%d product category archive', '%d product category archives', count( $ids ), 'fw' ), count( $ids ) )
+						: sprintf( _n( '%d category archive', '%d category archives', count( $ids ), 'fw' ), count( $ids ) );
 					break;
 			}
 		}

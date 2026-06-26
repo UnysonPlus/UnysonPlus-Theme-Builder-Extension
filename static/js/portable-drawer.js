@@ -61,6 +61,14 @@
 		if ( menuSrc ) {
 			var clone = menuSrc.cloneNode( true );
 			clone.removeAttribute( 'id' );
+			// Drop any Menu Toggle the nav may wrap — inside the drawer it would be a
+			// duplicate button with a now-dangling aria-controls.
+			var dupes = clone.querySelectorAll( '.menu-toggle, [aria-controls="' + DRAWER_ID + '"]' );
+			for ( var di = 0; di < dupes.length; di++ ) {
+				if ( dupes[ di ].parentNode ) {
+					dupes[ di ].parentNode.removeChild( dupes[ di ] );
+				}
+			}
 			panel.appendChild( clone );
 		}
 

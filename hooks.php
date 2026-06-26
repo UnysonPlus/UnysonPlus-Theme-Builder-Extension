@@ -304,7 +304,9 @@ function _action_fw_tb_preset_custom_css() {
 	}
 	foreach ( _fw_tb_rendering_part_ids() as $pid ) {
 		$css = trim( (string) fw_get_db_post_option( $pid, 'custom_css' ) );
-		if ( '' !== $css ) {
+		// Skip a value that would break out of the <style> wrapper (defensive — CSS
+		// never legitimately contains a closing style tag).
+		if ( '' !== $css && false === stripos( $css, '</style' ) ) {
 			echo "\n" . '<style id="fw-tb-preset-' . (int) $pid . '-css">' . "\n" . $css . "\n" . '</style>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput — editor CSS
 		}
 	}
@@ -322,7 +324,8 @@ function _action_fw_tb_preset_custom_js() {
 	}
 	foreach ( _fw_tb_rendering_part_ids() as $pid ) {
 		$js = trim( (string) fw_get_db_post_option( $pid, 'custom_js' ) );
-		if ( '' !== $js ) {
+		// Skip a value that would break out of the <script> wrapper (defensive).
+		if ( '' !== $js && false === stripos( $js, '</script' ) ) {
 			echo "\n" . '<script id="fw-tb-preset-' . (int) $pid . '-js">' . "\n" . $js . "\n" . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput — editor JS
 		}
 	}

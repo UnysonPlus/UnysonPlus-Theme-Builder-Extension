@@ -325,6 +325,12 @@ class FW_Theme_Builder_Seeder {
 			'post_title'  => $name,
 		), true );
 		if ( is_wp_error( $tid ) || ! $tid ) {
+			// Roll back the parts we just created so the failure doesn't orphan them.
+			foreach ( $part_ids as $orphan ) {
+				if ( $orphan ) {
+					wp_delete_post( (int) $orphan, true );
+				}
+			}
 			return is_wp_error( $tid ) ? $tid : new WP_Error( 'fw_tb_import_failed', __( 'Could not create the Template.', 'fw' ) );
 		}
 		self::write_template( (int) $tid, $name, $part_ids, self::normalize_conditions( isset( $data['conditions'] ) ? $data['conditions'] : array() ) );
