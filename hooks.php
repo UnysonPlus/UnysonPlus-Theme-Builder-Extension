@@ -371,9 +371,29 @@ function _fw_tb_swap_region( $html, $tag, $replacement, $last ) {
 	);
 
 	if ( preg_match_all( $pattern, $html, $m, PREG_OFFSET_CAPTURE ) && ! empty( $m[0] ) ) {
-		$hit   = $last ? end( $m[0] ) : $m[0][0];
-		$start = (int) $hit[1];
-		$len   = strlen( $hit[0] );
+		// Prefer the element that actually looks like the SITE header/footer — by
+		// landmark role, the common WP ids/classes, or the block-theme template-part
+		// wrapper — so a page with an article <header> or a widget <footer> doesn't
+		// get the wrong one swapped. Fall back to first (<header>) / last (<footer>).
+		$hint = ( 'footer' === $tag )
+			? '~role=["\']contentinfo|\b(?:colophon|site-footer|wp-block-template-part)\b~i'
+			: '~role=["\']banner|\b(?:masthead|site-header|wp-block-template-part)\b~i';
+		$chosen = null;
+		foreach ( $m[0] as $hit ) {
+			$gt   = strpos( $hit[0], '>' );
+			$open = ( false === $gt ) ? $hit[0] : substr( $hit[0], 0, $gt + 1 );
+			if ( preg_match( $hint, $open ) ) {
+				$chosen = $hit;
+				if ( ! $last ) {
+					break; // header: first qualifying wins; footer: keep the last qualifying
+				}
+			}
+		}
+		if ( null === $chosen ) {
+			$chosen = $last ? end( $m[0] ) : $m[0][0];
+		}
+		$start = (int) $chosen[1];
+		$len   = strlen( $chosen[0] );
 		return substr( $html, 0, $start ) . $replacement . substr( $html, $start + $len );
 	}
 
