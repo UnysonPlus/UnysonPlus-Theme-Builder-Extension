@@ -1,0 +1,24 @@
+{
+	"name": "Single Post",
+	"kind": "body",
+	"description": "A dynamic single-post layout — featured image, title, date · author, then the post content. Showcases the Dynamic Content elements. Assign it to All Posts (or a Post condition).",
+	"json": [
+		{
+			"type": "flexbox",
+			"atts": { "html_tag": "article", "direction": "column", "align_items": "stretch" },
+			"_items": [
+				{ "type": "simple", "shortcode": "featured_image", "atts": {}, "_items": [] },
+				{ "type": "simple", "shortcode": "post_title", "atts": { "heading_tag": "h1" }, "_items": [] },
+				{
+					"type": "flexbox",
+					"atts": { "html_tag": "div", "direction": "row", "justify_content": "start", "align_items": "center" },
+					"_items": [
+						{ "type": "simple", "shortcode": "post_date", "atts": {}, "_items": [] },
+						{ "type": "simple", "shortcode": "post_author", "atts": { "author_prefix": "by " }, "_items": [] }
+					]
+				},
+				{ "type": "simple", "shortcode": "post_content", "atts": {}, "_items": [] }
+			]
+		}
+	]
+}

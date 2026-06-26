@@ -20,8 +20,12 @@
  */
 class FW_Theme_Builder_Library {
 
-	/** One-time flag option: starter presets have been seeded. */
+	/** Legacy one-time flag (the original "all four seeded" boolean; now migrated). */
 	const SEED_FLAG = 'fw_tb_starter_presets_seeded';
+
+	/** Option: the starter slugs already seeded. Tracking per-slug lets a NEW bundled
+	 *  starter seed once on existing sites, while a user's deletions stay deleted. */
+	const SEEDED_OPT = 'fw_tb_seeded_starters';
 
 	private static $cpt_map = array( 'header' => 'up_header', 'body' => 'up_body', 'footer' => 'up_footer' );
 
@@ -44,12 +48,32 @@ class FW_Theme_Builder_Library {
 	 * @internal
 	 */
 	public function _maybe_seed_starters() {
-		if ( get_option( self::SEED_FLAG ) || ! current_user_can( 'edit_theme_options' ) ) {
+		if ( ! current_user_can( 'edit_theme_options' ) ) {
 			return;
 		}
-		update_option( self::SEED_FLAG, time() );
+		$seeded = get_option( self::SEEDED_OPT, null );
+		if ( ! is_array( $seeded ) ) {
+			// Migrate from the legacy boolean: if it was set, the original four are
+			// already seeded — record them so they are never re-created.
+			$seeded = get_option( self::SEED_FLAG )
+				? array( 'simple-header', 'centered-header', 'minimal-footer', 'page-content-body' )
+				: array();
+		}
+
+		// Reserve the slugs we'll seed (write the option BEFORE inserting) so a
+		// concurrent load can't double-seed.
+		$to_seed = array();
 		foreach ( self::items() as $it ) {
-			self::insert( $it['slug'] );
+			if ( ! in_array( $it['slug'], $seeded, true ) ) {
+				$to_seed[]  = $it['slug'];
+				$seeded[]   = $it['slug'];
+			}
+		}
+		if ( $to_seed || null === get_option( self::SEEDED_OPT, null ) ) {
+			update_option( self::SEEDED_OPT, array_values( array_unique( $seeded ) ) );
+		}
+		foreach ( $to_seed as $slug ) {
+			self::insert( $slug );
 		}
 	}
 
