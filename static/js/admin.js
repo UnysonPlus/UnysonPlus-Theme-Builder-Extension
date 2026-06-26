@@ -39,6 +39,33 @@ jQuery(function ($) {
 		tbConfirm(delMsg, i18n.deleteBtn || 'Delete', function () { window.location.href = href; });
 	});
 
+	/* ---- import a design bundle (upload a JSON exported with the row Export) ---- */
+	$( document ).on( 'click', '.fw-tb-import-design', function ( e ) {
+		e.preventDefault();
+		var input = $( '<input type="file" accept=".json,application/json" style="display:none">' ).appendTo( 'body' );
+		input.on( 'change', function () {
+			var file = this.files && this.files[0];
+			if ( ! file ) { input.remove(); return; }
+			var reader = new FileReader();
+			reader.onload = function () {
+				$.post( window.ajaxurl, {
+					action: 'fw_tb_import_design',
+					_wpnonce: cfg.importNonce,
+					data: String( reader.result || '' )
+				} ).done( function ( r ) {
+					if ( r && r.success && r.data && r.data.edit_url ) {
+						window.location = r.data.edit_url;
+					} else {
+						window.alert( ( r && r.data && r.data.message ) || cfg.importFail || 'Import failed.' );
+					}
+				} ).fail( function () { window.alert( cfg.importFail || 'Import failed.' ); } );
+			};
+			reader.readAsText( file );
+			input.remove();
+		} );
+		input.trigger( 'click' );
+	} );
+
 	/* ---- inline part create + edit, per dropdown ---- */
 	function editUrl(id) {
 		return (cfg.editPartBase || '') + '?post=' + encodeURIComponent(id) + '&action=edit';

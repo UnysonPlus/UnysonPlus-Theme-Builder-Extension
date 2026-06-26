@@ -134,6 +134,14 @@ class FW_Theme_Builder_Seeder {
 				$res                 = self::seed_part( $cpt, $data[ $key ], $slug . ':' . $key, $name . ' — ' . ucfirst( $key ), $force );
 				$part_ids[ $key ]    = $res['id'];
 				$part_status[ $key ] = $res['status'];
+				// Restore the part's meta (behavior / custom CSS-JS / loop), unless the
+				// user has hand-edited it (the guard skipped it).
+				if ( $res['id'] && $res['status'] !== 'skipped-edited'
+				     && isset( $data['meta'][ $key ] ) && is_array( $data['meta'][ $key ] ) ) {
+					foreach ( $data['meta'][ $key ] as $mk => $mv ) {
+						fw_set_db_post_option( (int) $res['id'], (string) $mk, $mv );
+					}
+				}
 			}
 		}
 
@@ -243,13 +251,85 @@ class FW_Theme_Builder_Seeder {
 			return null;
 		};
 
+		$hid = (int) fw_get_db_post_option( $id, 'tb_header_id' );
+		$bid = (int) fw_get_db_post_option( $id, 'tb_body_id' );
+		$fid = (int) fw_get_db_post_option( $id, 'tb_footer_id' );
+
+		// Per-part meta so a header's behavior + per-preset custom CSS/JS round-trip.
+		$part_meta = static function ( $pid, $keys ) {
+			$out = array();
+			foreach ( $keys as $k ) {
+				$v = fw_get_db_post_option( (int) $pid, $k );
+				if ( $v !== null && $v !== '' && $v !== array() ) {
+					$out[ $k ] = $v;
+				}
+			}
+			return $out;
+		};
+
 		return array(
 			'name'       => get_the_title( $id ),
 			'conditions' => self::normalize_conditions( fw_get_db_post_option( $id, 'tb_conditions' ) ),
-			'header'     => $part_tree( fw_get_db_post_option( $id, 'tb_header_id' ) ),
-			'body'       => $part_tree( fw_get_db_post_option( $id, 'tb_body_id' ) ),
-			'footer'     => $part_tree( fw_get_db_post_option( $id, 'tb_footer_id' ) ),
+			'header'     => $part_tree( $hid ),
+			'body'       => $part_tree( $bid ),
+			'footer'     => $part_tree( $fid ),
+			'meta'       => array(
+				'header' => $hid ? $part_meta( $hid, array( 'hf_type', 'hf_behavior', 'custom_css', 'custom_js' ) ) : array(),
+				'body'   => $bid ? $part_meta( $bid, array( 'tb_loop_columns', 'tb_loop_gap', 'custom_css', 'custom_js' ) ) : array(),
+				'footer' => $fid ? $part_meta( $fid, array( 'custom_css', 'custom_js' ) ) : array(),
+			),
 		);
+	}
+
+	/**
+	 * Import a design bundle (the export_template() shape) as a NEW Template + fresh
+	 * Header/Body/Footer presets — no seed key or manual-edit guard (it's a one-off
+	 * admin import, not a theme seed). Returns the new template id or WP_Error.
+	 *
+	 * @param array $data
+	 * @return int|WP_Error
+	 */
+	public static function import_bundle( $data ) {
+		if ( ! is_array( $data ) ) {
+			return new WP_Error( 'fw_tb_bad_bundle', __( 'That file is not a valid design bundle.', 'fw' ) );
+		}
+		$name = ( isset( $data['name'] ) && $data['name'] !== '' )
+			? sanitize_text_field( $data['name'] )
+			: __( 'Imported Template', 'fw' );
+
+		$part_ids = array( 'header' => 0, 'body' => 0, 'footer' => 0 );
+		foreach ( self::part_cpts() as $key => $cpt ) {
+			if ( ! isset( $data[ $key ] ) || ! is_array( $data[ $key ] ) ) {
+				continue;
+			}
+			$pid = wp_insert_post( array(
+				'post_type'   => $cpt,
+				'post_status' => 'publish',
+				'post_title'  => $name . ' — ' . ucfirst( $key ),
+			), true );
+			if ( is_wp_error( $pid ) || ! $pid ) {
+				continue;
+			}
+			self::write_part_builder( (int) $pid, (string) wp_json_encode( $data[ $key ] ) );
+			if ( isset( $data['meta'][ $key ] ) && is_array( $data['meta'][ $key ] ) ) {
+				foreach ( $data['meta'][ $key ] as $mk => $mv ) {
+					fw_set_db_post_option( (int) $pid, (string) $mk, $mv );
+				}
+			}
+			$part_ids[ $key ] = (int) $pid;
+		}
+
+		$tid = wp_insert_post( array(
+			'post_type'   => 'up_template',
+			'post_status' => 'publish',
+			'post_title'  => $name,
+		), true );
+		if ( is_wp_error( $tid ) || ! $tid ) {
+			return is_wp_error( $tid ) ? $tid : new WP_Error( 'fw_tb_import_failed', __( 'Could not create the Template.', 'fw' ) );
+		}
+		self::write_template( (int) $tid, $name, $part_ids, self::normalize_conditions( isset( $data['conditions'] ) ? $data['conditions'] : array() ) );
+
+		return (int) $tid;
 	}
 
 	/* ---------------------------------------------------------------- */

@@ -40,6 +40,7 @@ class FW_Theme_Builder_Admin_Page {
 
 		// Inline "＋ New Header/Body/Footer" creation from the Template screen.
 		add_action( 'wp_ajax_fw_tb_create_part', array( $this, '_ajax_create_part' ) );
+		add_action( 'wp_ajax_fw_tb_import_design', array( $this, '_ajax_import_design' ) );
 	}
 
 	/**
@@ -85,6 +86,34 @@ class FW_Theme_Builder_Admin_Page {
 			'id'       => (int) $id,
 			'title'    => get_the_title( $id ),
 			'edit_url' => admin_url( 'post.php?post=' . (int) $id . '&action=edit' ),
+		) );
+	}
+
+	/**
+	 * AJAX: import a design bundle (uploaded JSON from a row Export) as a new Template
+	 * + fresh Header/Body/Footer presets. Gated on the nonce + cap.
+	 *
+	 * @internal
+	 */
+	public function _ajax_import_design() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'fw' ) ) );
+		}
+		check_ajax_referer( 'fw_tb_import_design' );
+		if ( ! class_exists( 'FW_Theme_Builder_Seeder' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Importer unavailable.', 'fw' ) ) );
+		}
+		$data = json_decode( isset( $_POST['data'] ) ? (string) wp_unslash( $_POST['data'] ) : '', true );
+		if ( ! is_array( $data ) ) {
+			wp_send_json_error( array( 'message' => __( 'That file is not a valid design export.', 'fw' ) ) );
+		}
+		$res = FW_Theme_Builder_Seeder::import_bundle( $data );
+		if ( is_wp_error( $res ) ) {
+			wp_send_json_error( array( 'message' => $res->get_error_message() ) );
+		}
+		wp_send_json_success( array(
+			'id'       => (int) $res,
+			'edit_url' => $this->add_url( array( 'id' => (int) $res ) ),
 		) );
 	}
 
@@ -185,6 +214,8 @@ class FW_Theme_Builder_Admin_Page {
 		wp_localize_script( 'fw-theme-builder-admin', 'fwThemeBuilder', array(
 			'confirmDelete' => __( 'Delete this Template? Its header/body/footer designs are not deleted.', 'fw' ),
 			'createNonce'   => wp_create_nonce( self::NONCE_PART ),
+			'importNonce'   => wp_create_nonce( 'fw_tb_import_design' ),
+			'importFail'    => __( 'Import failed — is the file a Theme Builder design export?', 'fw' ),
 			'editPartBase'  => admin_url( 'post.php' ),
 			// Which dropdown maps to which part CPT (drives the inline "＋ New" button).
 			'parts'         => array(
@@ -566,6 +597,7 @@ class FW_Theme_Builder_Admin_Page {
 		?>
 		<h1 class="wp-heading-inline"><?php esc_html_e( 'Theme Builder', 'fw' ); ?></h1>
 		<a href="<?php echo esc_url( $this->add_url() ); ?>" class="page-title-action"><?php esc_html_e( 'Add Template', 'fw' ); ?></a>
+			<a href="#" class="page-title-action fw-tb-import-design" title="<?php esc_attr_e( 'Import a design exported with the row Export action (Template + its header/body/footer)', 'fw' ); ?>"><?php esc_html_e( 'Import Design', 'fw' ); ?></a>
 		<?php if ( class_exists( 'FW_Theme_Builder_Seeder' ) && FW_Theme_Builder_Seeder::has_seeds() ) : ?>
 			<a href="<?php echo esc_url( $this->row_action_url( 'import_seeds', 0 ) ); ?>" class="page-title-action"><?php esc_html_e( 'Import bundled templates', 'fw' ); ?></a>
 		<?php endif; ?>
