@@ -1,0 +1,102 @@
+/**
+ * Theme Builder — portable mobile menu drawer (foreign themes only).
+ *
+ * Styles the drawer that portable-drawer.js builds when a header preset's Menu
+ * Toggle renders under a non-unysonplus theme (the native theme ships its own). Off
+ * a side panel by default; a full overlay for the Fullscreen-overlay header type.
+ * Also gives the .menu-toggle a minimal hamburger look so it isn't an unstyled
+ * button under a foreign theme.
+ */
+
+.fw-tb-drawer {
+	position: fixed;
+	inset: 0;
+	z-index: 1100;
+}
+.fw-tb-drawer[hidden] { display: none; }
+
+.fw-tb-drawer__scrim {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, .5);
+	opacity: 0;
+	transition: opacity .3s ease;
+}
+.fw-tb-drawer.is-open .fw-tb-drawer__scrim { opacity: 1; }
+
+.fw-tb-drawer__panel {
+	position: absolute;
+	top: 0;
+	right: 0;
+	height: 100%;
+	width: min(330px, 86vw);
+	padding: 56px 26px 26px;
+	overflow-y: auto;
+	background: var(--fw-tb-drawer-bg, #fff);
+	color: inherit;
+	box-shadow: -8px 0 30px rgba(0, 0, 0, .18);
+	transform: translateX(100%);
+	transition: transform .3s ease;
+}
+.fw-tb-drawer.is-open .fw-tb-drawer__panel { transform: none; }
+
+.fw-tb-drawer__close {
+	position: absolute;
+	top: 12px;
+	right: 16px;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	background: none;
+	border: 0;
+	font-size: 30px;
+	line-height: 1;
+	color: inherit;
+	cursor: pointer;
+}
+
+/* Fullscreen overlay variant (Fullscreen-overlay header type). */
+.fw-tb-drawer--overlay .fw-tb-drawer__panel {
+	width: 100%;
+	padding-top: 76px;
+	text-align: center;
+	transform: translateY(-100%);
+}
+.fw-tb-drawer--overlay.is-open .fw-tb-drawer__panel { transform: none; }
+
+/* The cloned navigation, stacked for the drawer. */
+.fw-tb-drawer__panel nav { width: 100%; }
+.fw-tb-drawer__panel ul { list-style: none; margin: 0; padding: 0; }
+.fw-tb-drawer__panel li { margin: 0 0 2px; }
+.fw-tb-drawer__panel a {
+	display: block;
+	padding: 11px 4px;
+	color: inherit;
+	font-size: 16px;
+	text-decoration: none;
+}
+.fw-tb-drawer__panel a:hover { opacity: .7; }
+
+body.menu-drawer-open { overflow: hidden; }
+
+/* Minimal hamburger so the Menu Toggle looks right under a foreign theme. */
+.fw-tb-header .menu-toggle {
+	display: inline-flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 5px;
+	width: 42px;
+	height: 42px;
+	padding: 9px;
+	background: none;
+	border: 0;
+	color: inherit;
+	cursor: pointer;
+}
+.fw-tb-header .menu-toggle__bar {
+	display: block;
+	width: 22px;
+	height: 2px;
+	background: currentColor;
+	border-radius: 2px;
+}

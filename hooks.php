@@ -392,17 +392,28 @@ function _action_fw_tb_enqueue_preset_assets() {
 		return;
 	}
 
-	// Portable header behaviors: when the matched header carries a Scroll Behavior,
-	// ship the small CSS+JS so Sticky / Shrink / Hide-on-scroll / Transparent work
-	// under this foreign theme (the native theme has its own). Tiny + harmless.
+	// Portable header assets (foreign theme): when a header preset applies, ship the
+	// small bundles that the native theme would otherwise provide.
 	$hid = isset( $r['header_id'] ) ? (int) $r['header_id'] : 0;
-	if ( $hid > 0 && function_exists( 'fw_get_db_post_option' )
-	     && in_array( (string) fw_get_db_post_option( $hid, 'hf_behavior' ), array( 'sticky', 'sticky-shrink', 'hide-on-scroll', 'transparent-overlay' ), true ) ) {
+	if ( $hid > 0 ) {
 		$tb_ext = function_exists( 'fw_ext' ) ? fw_ext( 'theme-builder' ) : null;
 		if ( $tb_ext ) {
-			$tb_ver = $tb_ext->manifest->get_version();
-			wp_enqueue_style( 'fw-tb-header-behaviors', $tb_ext->get_uri( '/static/css/header-behaviors.css' ), array(), $tb_ver );
-			wp_enqueue_script( 'fw-tb-header-behaviors', $tb_ext->get_uri( '/static/js/header-behaviors.js' ), array(), $tb_ver, true );
+			$tb_ver  = $tb_ext->manifest->get_version();
+			$tb_base = $tb_ext->get_uri( '/static' );
+
+			// Scroll behaviors — only when the header has one (Sticky / Shrink /
+			// Hide-on-scroll / Transparent).
+			if ( function_exists( 'fw_get_db_post_option' )
+			     && in_array( (string) fw_get_db_post_option( $hid, 'hf_behavior' ), array( 'sticky', 'sticky-shrink', 'hide-on-scroll', 'transparent-overlay' ), true ) ) {
+				wp_enqueue_style( 'fw-tb-header-behaviors', $tb_base . '/css/header-behaviors.css', array(), $tb_ver );
+				wp_enqueue_script( 'fw-tb-header-behaviors', $tb_base . '/js/header-behaviors.js', array(), $tb_ver, true );
+			}
+
+			// Mobile menu drawer so the Menu Toggle / Off-canvas / Fullscreen-overlay
+			// header types work here too. The script no-ops if the header has no
+			// Menu Toggle, so it is safe to ship for any header.
+			wp_enqueue_style( 'fw-tb-portable-drawer', $tb_base . '/css/portable-drawer.css', array(), $tb_ver );
+			wp_enqueue_script( 'fw-tb-portable-drawer', $tb_base . '/js/portable-drawer.js', array(), $tb_ver, true );
 		}
 	}
 
