@@ -32,6 +32,10 @@ class FW_Theme_Builder_Admin_Page {
 		$this->extension = $extension;
 
 		add_action( 'admin_menu', array( $this, '_action_admin_menu' ) );
+		// Pull Templates to the top of the submenu (it's the hub most people edit, and
+		// becomes the menu's default landing page). Runs late, after the part CPT
+		// submenus have been appended by core.
+		add_action( 'admin_menu', array( $this, '_action_reorder_submenu' ), 100 );
 		add_action( 'admin_enqueue_scripts', array( $this, '_action_enqueue' ) );
 
 		// Inline "＋ New Header/Body/Footer" creation from the Template screen.
@@ -119,6 +123,36 @@ class FW_Theme_Builder_Admin_Page {
 
 		if ( $this->hook_suffix ) {
 			add_action( 'load-' . $this->hook_suffix, array( $this, '_maybe_handle' ) );
+		}
+	}
+
+	/**
+	 * Move the **Templates** submenu item to the top of the Theme Builder menu so it
+	 * leads (and is the menu's default landing page). The part CPTs (Header / Body /
+	 * Footer Presets) keep their existing order beneath it. Core appends the CPT
+	 * submenus before our same-slug Templates item, so without this Templates lands
+	 * last; this runs on `admin_menu` priority 100, after everything is registered.
+	 *
+	 * @internal
+	 */
+	public function _action_reorder_submenu() {
+		global $submenu;
+		if ( empty( $submenu[ self::MENU_SLUG ] ) || ! is_array( $submenu[ self::MENU_SLUG ] ) ) {
+			return;
+		}
+		$templates = null;
+		$rest      = array();
+		foreach ( $submenu[ self::MENU_SLUG ] as $item ) {
+			// $item[2] is the submenu slug; the Templates page reuses the parent slug.
+			if ( isset( $item[2] ) && $item[2] === self::MENU_SLUG ) {
+				$templates = $item;
+			} else {
+				$rest[] = $item;
+			}
+		}
+		if ( $templates !== null ) {
+			array_unshift( $rest, $templates );
+			$submenu[ self::MENU_SLUG ] = array_values( $rest );
 		}
 	}
 
