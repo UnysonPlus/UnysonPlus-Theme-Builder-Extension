@@ -89,7 +89,7 @@ add_filter( 'template_include', '_filter_fw_theme_builder_body_template_include'
  * applies unless it would hide a deliberately page-builder-built page: a full
  * replacement body (no [post_content]) never overrides such a page, but a
  * post_content-WRAPPING body does (it renders the page's own content inside the
- * Template layout — the Divi "Post Content" pattern).
+ * Template layout — the Post Content pattern).
  *
  * @internal
  * @return int
@@ -129,6 +129,35 @@ function _fw_tb_is_native_theme() {
 		'fw_theme_builder_native_theme',
 		function_exists( 'unysonplus_get_active_preset_id' )
 	);
+}
+
+/**
+ * Opening-tag attributes for a theme-independent <header> wrapper. Translates the
+ * preset's Scroll Behavior into the `fw-tb-header--<behavior>` class + the
+ * `data-hf-behavior` / `data-hf-type` attributes that header-behaviors.css/js key
+ * off, so Sticky / Sticky-shrink / Hide-on-scroll / Transparent-overlay work under
+ * any theme. Returns a leading-space attribute string.
+ *
+ * @internal
+ * @param int $header_id
+ * @return string
+ */
+function _fw_tb_header_wrapper_atts( $header_id ) {
+	$classes   = array( 'fw-tb-header' );
+	$attrs     = ' role="banner"';
+	$header_id = (int) $header_id;
+	if ( $header_id > 0 && function_exists( 'fw_get_db_post_option' ) ) {
+		$behavior = (string) fw_get_db_post_option( $header_id, 'hf_behavior' );
+		$type     = (string) fw_get_db_post_option( $header_id, 'hf_type' );
+		if ( in_array( $behavior, array( 'sticky', 'sticky-shrink', 'hide-on-scroll', 'transparent-overlay' ), true ) ) {
+			$classes[] = 'fw-tb-header--' . $behavior;
+			$attrs    .= ' data-hf-behavior="' . esc_attr( $behavior ) . '"';
+		}
+		if ( $type !== '' ) {
+			$attrs .= ' data-hf-type="' . esc_attr( $type ) . '"';
+		}
+	}
+	return ' class="' . esc_attr( implode( ' ', $classes ) ) . '"' . $attrs;
 }
 
 /**
@@ -193,6 +222,21 @@ function _action_fw_tb_enqueue_preset_assets() {
 	if ( ! $r ) {
 		return;
 	}
+
+	// Portable header behaviors: when the matched header carries a Scroll Behavior,
+	// ship the small CSS+JS so Sticky / Shrink / Hide-on-scroll / Transparent work
+	// under this foreign theme (the native theme has its own). Tiny + harmless.
+	$hid = isset( $r['header_id'] ) ? (int) $r['header_id'] : 0;
+	if ( $hid > 0 && function_exists( 'fw_get_db_post_option' )
+	     && in_array( (string) fw_get_db_post_option( $hid, 'hf_behavior' ), array( 'sticky', 'sticky-shrink', 'hide-on-scroll', 'transparent-overlay' ), true ) ) {
+		$tb_ext = function_exists( 'fw_ext' ) ? fw_ext( 'theme-builder' ) : null;
+		if ( $tb_ext ) {
+			$tb_ver = $tb_ext->manifest->get_version();
+			wp_enqueue_style( 'fw-tb-header-behaviors', $tb_ext->get_uri( '/static/css/header-behaviors.css' ), array(), $tb_ver );
+			wp_enqueue_script( 'fw-tb-header-behaviors', $tb_ext->get_uri( '/static/js/header-behaviors.js' ), array(), $tb_ver, true );
+		}
+	}
+
 	$sc = function_exists( 'fw_ext' ) ? fw_ext( 'shortcodes' ) : null;
 	if ( ! $sc || ! method_exists( $sc, 'enqueue_shortcodes_static' ) || ! function_exists( 'fw_ext_page_builder_get_post_content' ) ) {
 		return;
@@ -249,7 +293,7 @@ function _action_fw_tb_surgical_swap() {
 	if ( $header_id > 0 && function_exists( 'fw_ext_hfbuilder_render' ) ) {
 		$inner = fw_ext_hfbuilder_render( $header_id, 'header' );
 		if ( is_string( $inner ) && $inner !== '' ) {
-			$blocks['header'] = '<header class="fw-tb-header" role="banner">' . $inner . '</header>';
+			$blocks['header'] = '<header' . _fw_tb_header_wrapper_atts( $header_id ) . '>' . $inner . '</header>';
 		}
 	}
 	if ( $footer_id > 0 && function_exists( 'fw_ext_hfbuilder_render' ) ) {
@@ -281,15 +325,25 @@ function _fw_tb_swap_buffer_cb( $html ) {
 	if ( ! is_string( $html ) || $html === '' ) {
 		return $html;
 	}
-	$blocks = isset( $GLOBALS['_fw_tb_swap_blocks'] ) ? $GLOBALS['_fw_tb_swap_blocks'] : array();
-	$header = isset( $blocks['header'] ) ? (string) $blocks['header'] : '';
-	$footer = isset( $blocks['footer'] ) ? (string) $blocks['footer'] : '';
+	// We're now executing INSIDE an output-buffering display handler, where a
+	// nested ob_start() is a FATAL ("Cannot use output buffering in output
+	// buffering display handlers"). Flag it so framework view helpers
+	// (fw_render_view) degrade to inline rendering instead of fataling the page
+	// — should any swap-pattern filter or splice path ever render a view here.
+	$GLOBALS['_fw_ob_handler_running'] = true;
+	try {
+		$blocks = isset( $GLOBALS['_fw_tb_swap_blocks'] ) ? $GLOBALS['_fw_tb_swap_blocks'] : array();
+		$header = isset( $blocks['header'] ) ? (string) $blocks['header'] : '';
+		$footer = isset( $blocks['footer'] ) ? (string) $blocks['footer'] : '';
 
-	if ( $header !== '' ) {
-		$html = _fw_tb_swap_region( $html, 'header', $header, false );
-	}
-	if ( $footer !== '' ) {
-		$html = _fw_tb_swap_region( $html, 'footer', $footer, true );
+		if ( $header !== '' ) {
+			$html = _fw_tb_swap_region( $html, 'header', $header, false );
+		}
+		if ( $footer !== '' ) {
+			$html = _fw_tb_swap_region( $html, 'footer', $footer, true );
+		}
+	} finally {
+		$GLOBALS['_fw_ob_handler_running'] = false;
 	}
 	return $html;
 }

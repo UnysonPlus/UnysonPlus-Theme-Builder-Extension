@@ -34,7 +34,7 @@ $fw_tb_footer_id = class_exists( 'FW_Theme_Builder_Resolver' ) ? (int) FW_Theme_
 <?php if ( function_exists( 'wp_body_open' ) ) { wp_body_open(); } ?>
 
 <?php if ( $fw_tb_header_id > 0 && function_exists( 'fw_ext_hfbuilder_render' ) ) : ?>
-<header class="fw-tb-header" role="banner"><?php echo fw_ext_hfbuilder_render( $fw_tb_header_id, 'header' ); // phpcs:ignore WordPress.Security.EscapeOutput — builder HTML ?></header>
+<header<?php echo _fw_tb_header_wrapper_atts( $fw_tb_header_id ); // phpcs:ignore WordPress.Security.EscapeOutput — pre-escaped attrs ?>><?php echo fw_ext_hfbuilder_render( $fw_tb_header_id, 'header' ); // phpcs:ignore WordPress.Security.EscapeOutput — builder HTML ?></header>
 <?php endif; ?>
 
 <main id="fw-tb-content" class="fw-tb-standalone__content">

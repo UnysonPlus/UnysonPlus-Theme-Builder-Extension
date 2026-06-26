@@ -1,0 +1,56 @@
+/**
+ * Theme Builder — portable header scroll behaviors (foreign themes only).
+ *
+ * The unysonplus theme ships its own behavior CSS/JS keyed off #masthead; this
+ * mirror makes Sticky / Sticky-shrink / Hide-on-scroll / Transparent-overlay behave
+ * the same when a header preset renders under ANY other theme (the theme-independent
+ * takeover and surgical-swap paths). Keyed off the .fw-tb-header wrapper + the
+ * fw-tb-header--<behavior> class the renderer adds; .is-stuck / .is-hidden are
+ * toggled by header-behaviors.js.
+ */
+
+/* Sticky family — stick to the top and animate shrink/hide. */
+.fw-tb-header--sticky,
+.fw-tb-header--sticky-shrink,
+.fw-tb-header--hide-on-scroll {
+	position: -webkit-sticky;
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+	transition: transform .3s ease, box-shadow .3s ease, padding .3s ease, background-color .3s ease;
+}
+
+/* A subtle shadow once the page has scrolled. */
+.fw-tb-header--sticky.is-stuck,
+.fw-tb-header--sticky-shrink.is-stuck,
+.fw-tb-header--hide-on-scroll.is-stuck {
+	box-shadow: 0 1px 0 rgba(0, 0, 0, .06), 0 6px 20px rgba(0, 0, 0, .06);
+}
+
+/* Sticky-shrink — trim vertical padding once scrolled. */
+.fw-tb-header--sticky-shrink.is-stuck {
+	padding-top: .25rem;
+	padding-bottom: .25rem;
+}
+
+/* Hide-on-scroll — slide out of view on scroll down, back in on scroll up. */
+.fw-tb-header--hide-on-scroll.is-hidden {
+	transform: translateY(-100%);
+}
+
+/* Transparent-overlay — sit over the hero, solidify once scrolled. The solid
+   background is themeable via --fw-tb-header-bg (defaults to white). */
+.fw-tb-header--transparent-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 1000;
+	background: transparent;
+	transition: background-color .3s ease, box-shadow .3s ease;
+}
+.fw-tb-header--transparent-overlay.is-stuck {
+	position: fixed;
+	background: var(--fw-tb-header-bg, #fff);
+	box-shadow: 0 1px 0 rgba(0, 0, 0, .06), 0 6px 20px rgba(0, 0, 0, .06);
+}
