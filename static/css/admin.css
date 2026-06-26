@@ -100,3 +100,54 @@
 .fw-tb-form .submit .button {
 	margin-right: .5em;
 }
+
+/* ---- Confirm modal (self-contained; used by the Delete row action) ---- */
+.fw-tb-modal-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, .55);
+	animation: fwTbFade .12s ease;
+}
+@keyframes fwTbFade { from { opacity: 0; } to { opacity: 1; } }
+
+.fw-tb-modal {
+	width: calc(100% - 40px);
+	max-width: 440px;
+	padding: 24px 24px 18px;
+	background: #fff;
+	border-radius: 10px;
+	box-shadow: 0 14px 44px rgba(0, 0, 0, .28);
+	animation: fwTbPop .14s ease;
+}
+@keyframes fwTbPop {
+	from { opacity: 0; transform: translateY(8px) scale(.98); }
+	to   { opacity: 1; transform: none; }
+}
+
+.fw-tb-modal__msg {
+	margin-bottom: 22px;
+	color: #1d2327;
+	font-size: 14px;
+	line-height: 1.55;
+}
+.fw-tb-modal__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+.fw-tb-modal__ok.button,
+.fw-tb-modal__ok.button:focus {
+	background: #d63638;
+	border-color: #d63638;
+	color: #fff;
+	box-shadow: none;
+}
+.fw-tb-modal__ok.button:hover {
+	background: #b32d2e;
+	border-color: #b32d2e;
+	color: #fff;
+}

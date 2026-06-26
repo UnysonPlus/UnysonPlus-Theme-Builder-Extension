@@ -196,6 +196,7 @@ class FW_Theme_Builder_Admin_Page {
 				'newPart'    => __( '＋ New', 'fw' ),
 				'create'     => __( 'Create', 'fw' ),
 				'cancel'     => __( 'Cancel', 'fw' ),
+				'deleteBtn'  => __( 'Delete', 'fw' ),
 				'creating'   => __( 'Creating…', 'fw' ),
 				'editDesign' => __( 'Edit design ↗', 'fw' ),
 				/* translators: %s = part type, e.g. "body" */

@@ -11,16 +11,32 @@ jQuery(function ($) {
 	var cfg  = window.fwThemeBuilder || {};
 	var i18n = cfg.i18n || {};
 
-	/* ---- delete confirm ----
-	 * Use the native browser confirm. Unyson's fw.confirm() modal isn't enqueued on
-	 * this custom admin screen, so it would render its message as a stray, unstyled
-	 * <p> at the bottom of the page instead of a dialog. The delete link already
-	 * carries the nonce, so we only need to cancel the click when the user declines. */
+	/* ---- styled confirm modal ----
+	 * A small self-contained dialog (styled in admin.css). We do NOT use Unyson's
+	 * fw.confirm() here — its modal assets aren't enqueued on this custom admin
+	 * screen, so it would render its message as a stray unstyled <p> at the bottom of
+	 * the page. */
+	function tbConfirm(message, confirmLabel, onConfirm) {
+		var $overlay = $('<div class="fw-tb-modal-overlay"></div>');
+		var $box = $('<div class="fw-tb-modal" role="dialog" aria-modal="true"></div>');
+		$('<div class="fw-tb-modal__msg"></div>').text(message).appendTo($box);
+		var $actions = $('<div class="fw-tb-modal__actions"></div>').appendTo($box);
+		$('<button type="button" class="button fw-tb-modal__cancel"></button>').text(i18n.cancel || 'Cancel').appendTo($actions);
+		$('<button type="button" class="button fw-tb-modal__ok"></button>').text(confirmLabel || 'OK').appendTo($actions);
+		$overlay.append($box).appendTo('body');
+
+		function close() { $overlay.remove(); $(document).off('keydown.fwtbconfirm'); }
+		$box.find('.fw-tb-modal__ok').on('click', function () { close(); onConfirm(); }).trigger('focus');
+		$box.find('.fw-tb-modal__cancel').on('click', close);
+		$overlay.on('click', function (e) { if (e.target === $overlay[0]) { close(); } });
+		$(document).on('keydown.fwtbconfirm', function (e) { if (e.key === 'Escape' || e.keyCode === 27) { close(); } });
+	}
+
 	var delMsg = cfg.confirmDelete || 'Delete this Template?';
 	$(document).on('click', '.fw-tb-delete', function (e) {
-		if (!window.confirm(delMsg)) {
-			e.preventDefault();
-		}
+		e.preventDefault();
+		var href = this.href;
+		tbConfirm(delMsg, i18n.deleteBtn || 'Delete', function () { window.location.href = href; });
 	});
 
 	/* ---- inline part create + edit, per dropdown ---- */
