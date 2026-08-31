@@ -123,7 +123,7 @@ jQuery(function ($) {
 				action: 'fw_tb_create_part',
 				nonce:  cfg.createNonce,
 				cpt:    meta.cpt,
-				name:   $.trim($name.val())
+				name:   ( $name.val() || '' ).trim()
 			}).done(function (res) {
 				if (res && res.success && res.data && res.data.id) {
 					var d = res.data;
