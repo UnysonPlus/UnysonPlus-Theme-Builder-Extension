@@ -32,7 +32,10 @@
  *              (Divi's "Posts in Specific Categories"); ids required
  *   type 'tax' a term archive page — sub_type = taxonomy; ids = term ids, or empty
  *              = all archives of that taxonomy
- *   type 'ar'  a post-type archive — sub_type = post type
+ *   type 'ar'  a post-type archive
+ *   type 'au'  a singular post BY an author  — ids = user ids; ids required
+ *   type 'aar' an author archive page        — ids = user ids, or empty = any
+ *   type 'tpl' a singular post using a page template — sub_type = template file — sub_type = post type
  *
  * Matching uses ONLY native WordPress conditionals (no eval, no request-derived
  * includes); the resolver maps a matched Template → its registered part ids.
@@ -46,6 +49,10 @@ class FW_Theme_Builder_Resolver {
 	/* Specificity weights — higher = more specific = wins. */
 	const W_PT_ID       = 100; // a specific singular post
 	const W_TX_ID       = 80;  // a singular post in a specific term
+	const W_AU          = 80;  // a singular post by a specific author
+	const W_AAR_ID      = 80;  // a specific author's archive
+	const W_TPL         = 70;  // a singular post using a specific page template
+	const W_AAR_ALL     = 60;  // any author archive
 	const W_TAX_ID      = 80;  // a specific term archive
 	const W_PT_CHILDREN = 75;  // a descendant of a specific page (+ closeness bonus)
 	const W_AR          = 60;  // a post-type archive
@@ -85,10 +92,16 @@ class FW_Theme_Builder_Resolver {
 			'suppress_filters' => false,
 		) );
 
-		$best       = null;
-		$best_score = -1;
+		$best          = null;
+		$best_score    = -1;
+		$best_priority = 0;
 
 		foreach ( $ids as $tid ) {
+			// Switched off in the admin — invisible to the front end, but kept intact.
+			if ( ! self::is_enabled( $tid ) ) {
+				continue;
+			}
+
 			$cond = self::get_conditions( $tid );
 
 			// Exclusions win: if any exclude_from rule matches, skip this Template.
@@ -96,15 +109,21 @@ class FW_Theme_Builder_Resolver {
 				continue;
 			}
 
-			$score = self::best_match_score( isset( $cond['use_on'] ) ? $cond['use_on'] : array() );
+			$score = self::use_on_score( $cond );
 			if ( $score < 0 ) {
 				continue; // nothing in use_on matched this request
 			}
 
-			// Newest wins ties: posts are DESC, so only replace on a STRICTLY higher score.
-			if ( $score > $best_score ) {
-				$best_score = $score;
-				$best       = array(
+			$priority = self::priority_of( $tid );
+
+			// Rank: specificity first, then the author's Priority, then newest (the
+			// posts are date DESC, so "first seen at this rank" IS the newest). Priority
+			// only settles ties — it never lets a broad Template outrank a specific one,
+			// which would make the weight table meaningless.
+			if ( $score > $best_score || ( $score === $best_score && $priority > $best_priority ) ) {
+				$best_score    = $score;
+				$best_priority = $priority;
+				$best          = array(
 					'template_id' => (int) $tid,
 					'header_id'   => (int) self::get_part_id( $tid, 'tb_header_id' ),
 					'body_id'     => (int) self::get_part_id( $tid, 'tb_body_id' ),
@@ -122,6 +141,40 @@ class FW_Theme_Builder_Resolver {
 		 * @param array|null $best [ template_id, header_id, body_id, footer_id ] or null.
 		 */
 		return self::$cache = apply_filters( 'fw_theme_builder_resolved', $best );
+	}
+
+	/**
+	 * Is this Template switched on?
+	 *
+	 * Stored INVERTED, as `tb_disabled`, on purpose: the meta is absent on every
+	 * Template written before this existed, and absent must mean "active". An
+	 * `tb_enabled` flag would have made missing == falsy == off, silently blanking
+	 * the chrome on every existing site the moment they updated.
+	 *
+	 * @param int $tid
+	 * @return bool
+	 */
+	public static function is_enabled( $tid ) {
+		$off = function_exists( 'fw_get_db_post_option' )
+			? fw_get_db_post_option( $tid, 'tb_disabled' )
+			: get_post_meta( $tid, 'tb_disabled', true );
+
+		return empty( $off );
+	}
+
+	/**
+	 * The author's tie-break Priority (0 when unset). Higher wins among Templates
+	 * that matched at the SAME specificity.
+	 *
+	 * @param int $tid
+	 * @return int
+	 */
+	public static function priority_of( $tid ) {
+		$val = function_exists( 'fw_get_db_post_option' )
+			? fw_get_db_post_option( $tid, 'tb_priority' )
+			: get_post_meta( $tid, 'tb_priority', true );
+
+		return (int) $val;
 	}
 
 	/** Convenience: winning header part id for this request (0 = inherit). */
@@ -174,13 +227,16 @@ class FW_Theme_Builder_Resolver {
 		$candidates = array();
 		foreach ( $ids as $tid ) {
 			$cond     = self::get_conditions( $tid );
+			$enabled  = self::is_enabled( $tid );
 			$excluded = self::any_match( isset( $cond['exclude_from'] ) ? $cond['exclude_from'] : array() );
-			$score    = $excluded ? -1 : self::best_match_score( isset( $cond['use_on'] ) ? $cond['use_on'] : array() );
+			$score    = ( ! $enabled || $excluded ) ? -1 : self::use_on_score( $cond );
 			$candidates[] = array(
 				'id'       => (int) $tid,
 				'name'     => get_the_title( $tid ),
+				'enabled'  => $enabled,
 				'excluded' => $excluded,
-				'score'    => (int) $score, // -1 = no use_on rule matched
+				'priority' => self::priority_of( $tid ),
+				'score'    => (int) $score, // -1 = disabled, excluded, or no use_on rule matched
 			);
 		}
 		usort( $candidates, function ( $a, $b ) {
@@ -264,6 +320,46 @@ class FW_Theme_Builder_Resolver {
 	}
 
 	/**
+	 * Score the `use_on` side, honouring the Template's relation:
+	 *
+	 *   'or'  (default, and what every Template written before relations existed
+	 *         gets) — ANY rule matching is enough.
+	 *   'and' — EVERY rule must match, so "posts in Category X" + "by Author Y"
+	 *         narrows instead of widening.
+	 *
+	 * Either way the returned score is the HIGHEST weight among the rules, so
+	 * specificity ranking against other Templates is unchanged.
+	 *
+	 * @param array $cond the tb_conditions blob
+	 * @return int weight, or -1 when the side does not match this request.
+	 */
+	private static function use_on_score( $cond ) {
+		$rules = ( isset( $cond['use_on'] ) && is_array( $cond['use_on'] ) ) ? $cond['use_on'] : array();
+
+		// Read the relation inline rather than through FW_Theme_Builder_Conditions:
+		// that class is loaded only in wp-admin, while this resolver runs on every
+		// front-end request. Keep this engine free of cross-class dependencies.
+		$relation = isset( $cond['relation'] ) ? strtolower( (string) $cond['relation'] ) : 'or';
+
+		if ( 'and' !== $relation ) {
+			return self::best_match_score( $rules );
+		}
+
+		// AND: one failing rule disqualifies the Template outright.
+		$best = -1;
+		foreach ( $rules as $rule ) {
+			$w = self::match_rule( $rule );
+			if ( $w < 0 ) {
+				return -1;
+			}
+			if ( $w > $best ) {
+				$best = $w;
+			}
+		}
+		return $best; // -1 when the list is empty, same as OR
+	}
+
+	/**
 	 * Match one rule against the current request.
 	 *
 	 * @param array $rule [ type, sub_type, ids ]
@@ -333,6 +429,32 @@ class FW_Theme_Builder_Resolver {
 
 			case 'ar':
 				return ( $sub && is_post_type_archive( $sub ) ) ? self::W_AR : -1;
+
+			case 'au': // a singular post written by one of the given authors
+				if ( ! is_singular() || ! $ids ) {
+					return -1;
+				}
+				$post = get_post( get_queried_object_id() );
+				return ( $post && in_array( (int) $post->post_author, $ids, true ) ) ? self::W_AU : -1;
+
+			case 'aar': // an author archive page
+				if ( ! is_author() ) {
+					return -1;
+				}
+				if ( $ids ) {
+					return in_array( (int) get_queried_object_id(), $ids, true ) ? self::W_AAR_ID : -1;
+				}
+				return self::W_AAR_ALL;
+
+			case 'tpl': // a singular post using a specific page template
+				if ( ! is_singular() || '' === $sub ) {
+					return -1;
+				}
+				$slug = (string) get_page_template_slug( get_queried_object_id() );
+				if ( '' === $slug ) {
+					$slug = 'default'; // WP stores the default template as an empty string
+				}
+				return ( $slug === $sub ) ? self::W_TPL : -1;
 		}
 
 		return -1;

@@ -188,3 +188,68 @@ function fw_ext_theme_builder_print_body_region( $body_id ) {
 	}
 }
 endif;
+
+/**
+ * Which Template uses which part — built once per request.
+ *
+ * A Header/Body/Footer preset can be shared by any number of Templates, and
+ * nothing on the preset's own screens used to say so, which made deleting a
+ * shared header a silent way to blank the chrome on several parts of the site at
+ * once. Both the preset list tables and the preset editor read this.
+ *
+ * One pass over the Templates (2 queries, since WP primes the meta cache in bulk)
+ * rather than a query per preset, so a list table of 20 presets costs the same as
+ * one.
+ *
+ * @return array<int,int[]> part id => template ids
+ */
+function fw_tb_part_usage_map() {
+	static $map = null;
+
+	if ( null !== $map ) {
+		return $map;
+	}
+
+	$map = array();
+
+	if ( ! post_type_exists( 'up_template' ) || ! function_exists( 'fw_get_db_post_option' ) ) {
+		return $map;
+	}
+
+	$templates = get_posts( array(
+		'post_type'        => 'up_template',
+		'post_status'      => 'publish',
+		'numberposts'      => -1,
+		'fields'           => 'ids',
+		'suppress_filters' => false,
+	) );
+
+	foreach ( $templates as $tid ) {
+		foreach ( array( 'tb_header_id', 'tb_body_id', 'tb_footer_id' ) as $key ) {
+			$pid = (int) fw_get_db_post_option( $tid, $key );
+			if ( $pid > 0 ) {
+				$map[ $pid ][] = (int) $tid;
+			}
+		}
+	}
+
+	// A Template can reference the same preset in two slots; list it once.
+	foreach ( $map as $pid => $ids ) {
+		$map[ $pid ] = array_values( array_unique( $ids ) );
+	}
+
+	return $map;
+}
+
+/**
+ * The Templates that reference a given Header/Body/Footer preset.
+ *
+ * @param int $part_id
+ * @return int[] template ids (empty when nothing uses it)
+ */
+function fw_tb_templates_using_part( $part_id ) {
+	$map     = fw_tb_part_usage_map();
+	$part_id = (int) $part_id;
+
+	return isset( $map[ $part_id ] ) ? $map[ $part_id ] : array();
+}

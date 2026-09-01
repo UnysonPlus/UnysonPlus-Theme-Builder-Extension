@@ -1,3 +1,29 @@
+/* ==================================================================
+   Accent tokens.
+
+   These USED to read --wp-admin-theme-color so the page would follow the user's
+   chosen admin colour scheme. That backfired: WordPress still sets that variable
+   to the legacy #007cba, while its own .button-primary now paints #3858e9. The
+   fallbacks below were never reached (the variable IS defined, just stale), so
+   the active view-switch button rendered a washed-out legacy blue next to
+   correctly-coloured primary buttons -- visibly "off" on the default scheme,
+   which is what nearly every install uses.
+
+   Pinned to the design accent instead. These are the same two values that were
+   already written as the fallbacks, so the intended colour is unchanged; it is
+   now the one that actually applies. The trade-off is deliberate: a non-default
+   admin colour scheme no longer retints this page, which matches the rest of the
+   skin (the settings chrome is a fixed blue too) and is the reason not to put
+   --wp-admin-theme-color back without re-checking what it resolves to.
+   ================================================================== */
+:root {
+	--fw-tb-accent:      #3858e9;
+	--fw-tb-accent-ink:  #2f43bb;
+	--fw-tb-accent-line: color-mix(in srgb, var(--fw-tb-accent) 32%, #fff);
+	--fw-tb-accent-soft: color-mix(in srgb, var(--fw-tb-accent) 7%, #fff);
+	--fw-tb-accent-wash: color-mix(in srgb, var(--fw-tb-accent) 14%, #fff);
+}
+
 /* Theme Builder — admin management page */
 
 .fw-tb-wrap .description {
@@ -46,9 +72,9 @@
 	max-width: 920px;
 	margin: 1em 0 .25em;
 	padding: .75em 1em;
-	background: #f0f6fc;
-	border: 1px solid #c5d9ed;
-	border-left: 4px solid #2271b1;
+	background: var(--fw-tb-accent-soft);
+	border: 1px solid var(--fw-tb-accent-line);
+	border-left: 4px solid var(--fw-tb-accent);
 	border-radius: 4px;
 }
 .fw-tb-intro p {
@@ -77,7 +103,7 @@
 	min-width: 220px;
 }
 .fw-tb-part-tools .fw-tb-newpart-tip {
-	color: #2271b1;
+	color: var(--fw-tb-accent);
 	font-size: 12px;
 	font-style: italic;
 }
@@ -150,4 +176,1027 @@
 	background: #b32d2e;
 	border-color: #b32d2e;
 	color: #fff;
+}
+
+/* ==================================================================
+   Canvas view — one card per Template, three actionable slots each.
+   Native WP-admin palette (#dcdcde borders, var(--fw-tb-accent) accent) so it sits
+   beside the rest of the framework's screens without a theme of its own.
+   ================================================================== */
+
+/* Canvas / List switch, sitting with the page-title actions */
+.fw-tb-viewswitch {
+	display: inline-flex;
+	margin: 0 0 0 8px;
+	vertical-align: 3px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	overflow: hidden;
+	background: #fff;
+}
+.fw-tb-viewswitch__btn {
+	padding: 3px 12px;
+	color: #2c3338;
+	font-size: 13px;
+	line-height: 2;
+	text-decoration: none;
+	box-shadow: none;
+}
+.fw-tb-viewswitch__btn + .fw-tb-viewswitch__btn {
+	border-left: 1px solid #c3c4c7;
+}
+.fw-tb-viewswitch__btn:hover {
+	background: #f0f0f1;
+	color: var(--fw-tb-accent-ink);
+}
+.fw-tb-viewswitch__btn.is-active {
+	background: var(--fw-tb-accent);
+	color: #fff;
+	font-weight: 600;
+}
+.fw-tb-viewswitch__btn:focus {
+	box-shadow: inset 0 0 0 2px var(--fw-tb-accent);
+	outline: 2px solid transparent;
+}
+
+/* The grid */
+.fw-tb-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 20px;
+	margin: 1.25em 0 1em;
+	/* stretch, not start: every card in a row matches the tallest one, so the grid
+	   reads as an even set rather than a ragged one. The card is a flex column and
+	   its slots area takes the slack. */
+	align-items: stretch;
+}
+
+.fw-tb-cards__hint {
+	color: #646970;
+	margin: 0 0 1em;
+}
+.fw-tb-cards__hint .button {
+	margin-left: .5em;
+}
+
+/* ---- the card ---- */
+.fw-tb-card {
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+	transition: box-shadow .15s ease, border-color .15s ease;
+}
+.fw-tb-card:hover {
+	border-color: #c3c4c7;
+	box-shadow: 0 3px 10px rgba(0, 0, 0, .07);
+}
+
+/* "Create new page template" */
+.fw-tb-card--new {
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	min-height: 210px;
+	padding: 24px;
+	border-style: dashed;
+	border-color: #c3c4c7;
+	background: #fbfbfc;
+	box-shadow: none;
+	color: #50575e;
+	text-align: center;
+	text-decoration: none;
+}
+.fw-tb-card--new:hover {
+	border-color: var(--fw-tb-accent);
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+}
+.fw-tb-card--new:focus {
+	box-shadow: 0 0 0 2px var(--fw-tb-accent);
+	outline: 2px solid transparent;
+}
+.fw-tb-card--new__plus {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 46px;
+	height: 46px;
+	border: 1px solid currentColor;
+	border-radius: 50%;
+	font-size: 24px;
+	line-height: 1;
+	opacity: .65;
+}
+.fw-tb-card--new__label {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* ---- head ---- */
+.fw-tb-card__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 12px 12px 16px;
+	border-bottom: 1px solid #f0f0f1;
+}
+.fw-tb-card__title {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+.fw-tb-card__title a {
+	display: block;
+	overflow: hidden;
+	color: #1d2327;
+	text-decoration: none;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.fw-tb-card__title a:hover {
+	color: var(--fw-tb-accent);
+}
+.fw-tb-card__badge {
+	flex: 0 0 auto;
+	order: -1;
+	padding: 2px 8px;
+	border-radius: 10px;
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .2px;
+	text-transform: uppercase;
+}
+
+/* ---- kebab menu ---- */
+.fw-tb-card__menu {
+	position: relative;
+	flex: 0 0 auto;
+}
+.fw-tb-menu-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: none;
+	color: #646970;
+	cursor: pointer;
+}
+.fw-tb-menu-toggle:hover,
+.fw-tb-menu-toggle[aria-expanded="true"] {
+	border-color: #dcdcde;
+	background: #f6f7f7;
+	color: #1d2327;
+}
+.fw-tb-menu {
+	position: absolute;
+	top: 32px;
+	right: 0;
+	z-index: 20;
+	min-width: 170px;
+	margin: 0;
+	padding: 4px 0;
+	list-style: none;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+}
+.fw-tb-menu li {
+	margin: 0;
+}
+.fw-tb-menu a {
+	display: block;
+	padding: 7px 14px;
+	color: #1d2327;
+	font-size: 13px;
+	text-decoration: none;
+}
+.fw-tb-menu a:hover {
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+}
+.fw-tb-menu__danger {
+	border-top: 1px solid #f0f0f1;
+	margin-top: 4px;
+	padding-top: 8px !important;
+	color: #b32d2e !important;
+}
+.fw-tb-menu__danger:hover {
+	background: #fcf0f1 !important;
+	color: #8a2424 !important;
+}
+
+/* ---- slots ---- */
+.fw-tb-card__slots {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 8px;
+	padding: 14px 16px;
+}
+.fw-tb-slot {
+	display: grid;
+	grid-template-columns: 58px 1fr;
+	align-items: center;
+	gap: 10px;
+}
+.fw-tb-slot.is-busy {
+	opacity: .55;
+	pointer-events: none;
+}
+.fw-tb-slot__type {
+	color: #646970;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .3px;
+	text-transform: uppercase;
+}
+.fw-tb-slot__body {
+	min-width: 0;
+}
+
+/* filled */
+.fw-tb-slot.is-filled .fw-tb-slot__body {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 6px 6px 12px;
+	border: 1px solid #dcdcde;
+	border-radius: 5px;
+	background: #f6f7f7;
+}
+.fw-tb-slot__name {
+	flex: 1 1 auto;
+	overflow: hidden;
+	color: #1d2327;
+	font-size: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.fw-tb-slot__acts {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 2px;
+}
+.fw-tb-slot__act {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: none;
+	color: #646970;
+	cursor: pointer;
+	text-decoration: none;
+}
+.fw-tb-slot__act .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+.fw-tb-slot-edit:hover {
+	border-color: var(--fw-tb-accent);
+	background: #fff;
+	color: var(--fw-tb-accent);
+}
+.fw-tb-slot-clear:hover {
+	border-color: #d63638;
+	background: #fff;
+	color: #d63638;
+}
+
+/* empty */
+.fw-tb-slot-add {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 7px 12px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 5px;
+	background: none;
+	color: #646970;
+	cursor: pointer;
+	font-size: 13px;
+	text-align: left;
+}
+.fw-tb-slot-add:hover {
+	border-color: var(--fw-tb-accent);
+	border-style: solid;
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+}
+
+/* picker (assign / name-a-new-one), replaces the slot body in place */
+.fw-tb-slot__picker {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.fw-tb-slot__select,
+.fw-tb-slot__name-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	max-width: 100%;
+	height: 30px;
+	font-size: 13px;
+}
+.fw-tb-slot__cancel {
+	flex: 0 0 auto;
+	color: #646970;
+	font-size: 12px;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+/* ---- conditions line ---- */
+.fw-tb-card__cond {
+	padding: 11px 16px;
+	border-top: 1px solid #f0f0f1;
+	background: #fcfcfd;
+	border-radius: 0 0 7px 7px;
+	color: #50575e;
+	font-size: 12px;
+	line-height: 1.5;
+}
+.fw-tb-card__cond-label {
+	margin-right: 5px;
+	color: #8c8f94;
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: 10px;
+	letter-spacing: .4px;
+}
+
+@media screen and (max-width: 782px) {
+	.fw-tb-cards {
+		grid-template-columns: 1fr;
+	}
+	.fw-tb-viewswitch {
+		display: flex;
+		margin: 10px 0 0;
+	}
+}
+
+/* ==================================================================
+   Step 2 — condition rows. One row per rule: Include/Exclude, the rule
+   type, its qualifier, and its values. Replaces the old two walls of
+   checkboxes (one per side) with a single list.
+   ================================================================== */
+
+.fw-tb-cond {
+	max-width: 920px;
+	margin-top: 20px;
+}
+.fw-tb-cond__intro {
+	margin: 0 0 14px;
+	color: #50575e;
+}
+
+.fw-tb-cond__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.fw-tb-cond__none {
+	margin: 0;
+	padding: 18px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 6px;
+	background: #fbfbfc;
+	text-align: center;
+}
+
+/* ---- a row ---- */
+.fw-tb-cond-row {
+	display: grid;
+	grid-template-columns: 118px 168px 1fr 1.2fr 32px;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid #dcdcde;
+	border-left: 3px solid var(--fw-tb-accent);
+	border-radius: 6px;
+	background: #fff;
+}
+.fw-tb-cond-row.is-exclude {
+	border-left-color: #d63638;
+	background: #fdf8f8;
+}
+.fw-tb-cond-row.is-incomplete {
+	border-left-color: #dba617;
+	background: #fdfaf3;
+}
+
+.fw-tb-cond__cell {
+	position: relative;
+	min-width: 0;
+}
+.fw-tb-cond__cell select {
+	width: 100%;
+	max-width: 100%;
+}
+.fw-tb-cond__cell--spacer {
+	/* keeps the grid columns aligned when a rule takes no qualifier/values */
+}
+
+.fw-tb-cond-row__hint {
+	grid-column: 2 / -1;
+	margin: 2px 0 0;
+	color: #787c82;
+	font-size: 12px;
+	font-style: italic;
+}
+
+.fw-tb-cond__del {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: none;
+	color: #646970;
+	cursor: pointer;
+}
+.fw-tb-cond__del:hover {
+	border-color: #d63638;
+	background: #fff;
+	color: #d63638;
+}
+
+/* ---- values: chips + picker ---- */
+.fw-tb-cond__cell--ids {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 5px;
+}
+.fw-tb-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.fw-tb-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px 2px 9px;
+	border: 1px solid var(--fw-tb-accent-line);
+	border-radius: 11px;
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+	font-size: 12px;
+	line-height: 1.6;
+}
+.fw-tb-chip__x {
+	padding: 0 3px;
+	border: 0;
+	background: none;
+	color: var(--fw-tb-accent-ink);
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	opacity: .6;
+}
+.fw-tb-chip__x:hover {
+	opacity: 1;
+	color: #d63638;
+}
+.fw-tb-chips__empty {
+	color: #8c8f94;
+	font-size: 12px;
+	font-style: italic;
+}
+
+.fw-tb-picker {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 30;
+	width: 280px;
+	max-width: 90vw;
+	padding: 10px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	box-shadow: 0 8px 26px rgba(0, 0, 0, .16);
+}
+.fw-tb-picker__search {
+	width: 100%;
+	margin-bottom: 8px;
+}
+.fw-tb-picker__list {
+	max-height: 220px;
+	overflow-y: auto;
+	margin-bottom: 8px;
+	border: 1px solid #f0f0f1;
+	border-radius: 4px;
+}
+.fw-tb-picker__item {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 5px 9px;
+	border-bottom: 1px solid #f6f7f7;
+	font-size: 13px;
+	cursor: pointer;
+}
+.fw-tb-picker__item:last-child {
+	border-bottom: 0;
+}
+.fw-tb-picker__item:hover {
+	background: var(--fw-tb-accent-soft);
+}
+.fw-tb-picker__item input {
+	margin: 0;
+}
+.fw-tb-picker__empty {
+	margin: 0;
+	padding: 12px;
+	color: #787c82;
+	text-align: center;
+}
+.fw-tb-picker__done {
+	float: right;
+}
+
+/* ---- footer: add + relation ---- */
+.fw-tb-cond__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 14px;
+}
+.fw-tb-cond__relation {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+}
+.fw-tb-cond__relation label {
+	color: #50575e;
+	font-weight: 600;
+}
+.fw-tb-cond__note {
+	margin-top: 10px;
+}
+
+@media screen and (max-width: 900px) {
+	.fw-tb-cond-row {
+		grid-template-columns: 1fr 1fr 32px;
+	}
+	.fw-tb-cond-row__hint {
+		grid-column: 1 / -1;
+	}
+}
+
+/* ==================================================================
+   Status: the per-card enable switch, the disabled state, priority.
+   ================================================================== */
+
+.fw-tb-switch {
+	position: relative;
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+}
+/* Selector is deliberately over-specific: wp-admin styles `input[type=checkbox]`
+   (0,1,1), which outranks a bare class and would pin this to 16x16. The input has
+   to cover the whole track AND paint above it, or the track — which comes later in
+   the DOM and is positioned — swallows the pointer events and the checkbox itself
+   is never the hit target. */
+.fw-tb-switch input.fw-tb-switch__input {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+.fw-tb-switch__track {
+	position: relative;
+	display: block;
+	width: 32px;
+	height: 18px;
+	border-radius: 9px;
+	background: #c3c4c7;
+	transition: background .15s ease;
+}
+.fw-tb-switch__track::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+	transition: transform .15s ease;
+}
+.fw-tb-switch__input:checked + .fw-tb-switch__track {
+	background: var(--fw-tb-accent);
+}
+.fw-tb-switch__input:checked + .fw-tb-switch__track::after {
+	transform: translateX(14px);
+}
+.fw-tb-switch__input:focus-visible + .fw-tb-switch__track {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--fw-tb-accent);
+}
+
+/* a switched-off card reads as inactive without disappearing */
+.fw-tb-card.is-disabled {
+	background: #fbfbfc;
+	border-style: dashed;
+}
+.fw-tb-card.is-disabled .fw-tb-card__title,
+.fw-tb-card.is-disabled .fw-tb-card__slots {
+	opacity: .5;
+}
+.fw-tb-card.is-disabled:hover .fw-tb-card__title,
+.fw-tb-card.is-disabled:hover .fw-tb-card__slots {
+	opacity: .72;
+}
+.fw-tb-card__off {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.fw-tb-card__badge--priority {
+	background: #f6f7f7;
+	color: #50575e;
+}
+
+/* ---- Status & priority box on the edit screen ---- */
+.fw-tb-status {
+	max-width: 920px;
+	margin-top: 20px;
+}
+.fw-tb-status__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 14px;
+}
+.fw-tb-status__row:last-child {
+	margin-bottom: 0;
+}
+.fw-tb-status__row .description {
+	flex: 1 1 380px;
+	margin: 0;
+	color: #646970;
+}
+
+/* ==================================================================
+   Template edit screen — box parity.
+
+   Step 1 is rendered by the framework (.fw-postbox, whose .hndle is a flex row
+   carrying empty before/after <small> slots that push the title to the middle,
+   and whose .inside is flush because the option ROWS carry the 20px gutter).
+   Steps 2 and 3 are ours and were falling back to browser <h2> metrics plus
+   wp-admin's 12px .inside gutter. Left alone the three boxes disagree on
+   heading size, alignment and content indent — so normalise all of them here,
+   scoped to this form only.
+   ================================================================== */
+
+.fw-tb-form .postbox > .postbox-header > .hndle,
+.fw-tb-form .fw-postbox > .postbox-header > .hndle {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	margin: 0;
+	padding: 10px 20px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+	text-align: left;
+}
+
+/* the framework's title slots must not stretch, or the title re-centres */
+.fw-tb-form .postbox > .postbox-header > .hndle > * {
+	flex: 0 0 auto;
+}
+.fw-tb-form .postbox > .postbox-header > .hndle > .fw-html-before-title:empty,
+.fw-tb-form .postbox > .postbox-header > .hndle > .fw-html-after-title:empty {
+	display: none;
+}
+
+/* Match the gutter the framework's option rows use (--u-row-pad-x: 20px), so
+   the first control in every box starts on the same vertical line. */
+.fw-tb-form .fw-tb-cond > .inside,
+.fw-tb-form .fw-tb-status > .inside {
+	margin: 0;
+	padding: 16px 20px;
+}
+
+/* these carried their own outer margin before; the boxes now space themselves */
+.fw-tb-form .fw-tb-cond,
+.fw-tb-form .fw-tb-status {
+	margin: 20px 0 0;
+	max-width: none;
+}
+
+/* ==================================================================
+   Tree view — the site's template hierarchy. Depth reads as
+   specificity, so the shape of the tree IS the precedence order, and
+   a node with nothing attached is a visible coverage gap.
+   ================================================================== */
+
+.fw-tb-tree {
+	max-width: 1100px;
+	margin: 1.25em 0 1em;
+	padding: 6px 20px 18px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.fw-tb-tree__legend {
+	max-width: 780px;
+	margin: 14px 0 18px;
+	color: #50575e;
+}
+
+.fw-tb-tree ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* nested levels get the connector rail */
+.fw-tb-tree__root ul {
+	margin-left: 11px;
+	padding-left: 18px;
+	border-left: 1px solid #e0e1e3;
+}
+
+.fw-tb-tree__node {
+	position: relative;
+	margin: 0;
+}
+
+/* the little tick joining a row to its parent's rail */
+.fw-tb-tree__root ul > .fw-tb-tree__node::before {
+	content: "";
+	position: absolute;
+	top: 17px;
+	left: -18px;
+	width: 12px;
+	border-top: 1px solid #e0e1e3;
+}
+
+.fw-tb-tree__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	min-height: 34px;
+	padding: 3px 0;
+}
+
+.fw-tb-tree__label {
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* structural grouping rows (Special pages / Singular content / Archives) —
+   nothing can target them, so they read as section labels, not as gaps */
+.fw-tb-tree__node.is-group > .fw-tb-tree__row .fw-tb-tree__label {
+	color: #8c8f94;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: .5px;
+	text-transform: uppercase;
+}
+
+.fw-tb-tree__node.is-gap > .fw-tb-tree__row .fw-tb-tree__label {
+	color: #646970;
+	font-weight: 400;
+}
+
+.fw-tb-tree__templates {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+
+/* an attached Template */
+.fw-tb-tree__chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border: 1px solid var(--fw-tb-accent-line);
+	border-radius: 11px;
+	background: var(--fw-tb-accent-soft);
+	color: var(--fw-tb-accent-ink);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	text-decoration: none;
+}
+.fw-tb-tree__chip:hover {
+	border-color: var(--fw-tb-accent);
+	background: var(--fw-tb-accent-wash);
+	color: var(--fw-tb-accent-ink);
+}
+.fw-tb-tree__chip.is-off {
+	border-color: #dcdcde;
+	background: #f6f7f7;
+	color: #787c82;
+	font-weight: 400;
+}
+.fw-tb-tree__chip-off {
+	padding: 0 5px;
+	border-radius: 7px;
+	background: #dcdcde;
+	color: #50575e;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+/* the gap affordance — quiet until you look for it */
+.fw-tb-tree__add {
+	color: #a7aaad;
+	font-size: 12px;
+	text-decoration: none;
+}
+.fw-tb-tree__node.is-gap:hover > .fw-tb-tree__row .fw-tb-tree__add,
+.fw-tb-tree__add:focus {
+	color: var(--fw-tb-accent);
+}
+
+.fw-tb-tree__unplaced {
+	margin-top: 22px;
+	padding: 14px 16px;
+	border: 1px solid #f0c33c;
+	border-left: 3px solid #dba617;
+	border-radius: 6px;
+	background: #fdfaf3;
+}
+.fw-tb-tree__unplaced h2 {
+	margin: 0 0 4px;
+	font-size: 13px;
+}
+.fw-tb-tree__unplaced .description {
+	margin: 0 0 10px;
+}
+.fw-tb-tree__unplaced ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+@media screen and (max-width: 782px) {
+	.fw-tb-tree {
+		padding: 6px 12px 14px;
+	}
+	.fw-tb-tree__root ul {
+		padding-left: 12px;
+	}
+	.fw-tb-tree__root ul > .fw-tb-tree__node::before {
+		left: -12px;
+		width: 8px;
+	}
+}
+
+/* ==================================================================
+   Card thumbnails — a real front-end render, scaled down.
+   ================================================================== */
+
+/* inline-BLOCK, not inline-flex: an inline-flex box takes its baseline from its
+   first flex item, which here is the icon, and that floated the whole control a
+   few pixels above the page-title buttons. As an inline-block its baseline is the
+   label's text baseline, so it sits on the same line as everything else. */
+.fw-tb-previews-toggle {
+	display: inline-block;
+	margin-left: 10px;
+	padding: 3px 10px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 2;
+	text-decoration: none;
+	vertical-align: 3px;
+}
+.fw-tb-previews-toggle:hover {
+	border-color: var(--fw-tb-accent);
+	color: var(--fw-tb-accent-ink);
+}
+.fw-tb-previews-toggle.is-on {
+	color: var(--fw-tb-accent-ink);
+	border-color: var(--fw-tb-accent-line);
+	background: var(--fw-tb-accent-soft);
+}
+/* An inline-flex box takes its baseline from its FIRST flex item, and this one's
+   is the icon. Left at 16px the whole control aligned to the icon's baseline and
+   sat 3px above the page-title buttons; matching the label's line-height puts the
+   icon's baseline on the text's, so the control lines up with everything else. */
+.fw-tb-previews-toggle .dashicons {
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+	font-size: 16px;
+	line-height: 1;
+	vertical-align: -3px; /* sit the glyph on the label's baseline */
+}
+
+.fw-tb-card__preview {
+	position: relative;
+	overflow: hidden;
+	aspect-ratio: 1280 / 860;
+	background: #f6f7f7;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.fw-tb-card__preview iframe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 1280px;
+	height: 860px;
+	border: 0;
+	transform-origin: top left;
+	/* decorative: the card keeps the clicks, the frame never steals them */
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity .25s ease;
+}
+.fw-tb-card__preview.is-ready iframe {
+	opacity: 1;
+}
+
+/* a quiet sweep while the frame loads, so the space does not read as broken */
+.fw-tb-card__preview-wait {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(100deg, #f6f7f7 30%, #eef0f1 50%, #f6f7f7 70%);
+	background-size: 240% 100%;
+	animation: fwTbSweep 1.3s ease-in-out infinite;
+}
+.fw-tb-card__preview.is-ready .fw-tb-card__preview-wait {
+	display: none;
+}
+@keyframes fwTbSweep {
+	from { background-position: 130% 0; }
+	to   { background-position: -30% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.fw-tb-card__preview-wait { animation: none; }
+}
+
+/* Same aspect ratio as a loaded frame on purpose: a card with nothing to preview
+   must occupy exactly the space one with a preview does, or cards in the same row
+   stop matching in height. */
+.fw-tb-card__preview.is-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: repeating-linear-gradient(45deg, #fafafa, #fafafa 9px, #f4f4f5 9px, #f4f4f5 18px);
+}
+.fw-tb-card__preview-none {
+	color: #8c8f94;
+	font-size: 12px;
+	font-style: italic;
+}
+
+/* a switched-off Template's thumbnail should read as inactive too */
+.fw-tb-card.is-disabled .fw-tb-card__preview {
+	opacity: .45;
+	filter: grayscale(1);
 }

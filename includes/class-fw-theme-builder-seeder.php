@@ -270,6 +270,10 @@ class FW_Theme_Builder_Seeder {
 		return array(
 			'name'       => get_the_title( $id ),
 			'conditions' => self::normalize_conditions( fw_get_db_post_option( $id, 'tb_conditions' ) ),
+			// Status + tie-break priority travel with the design, so exporting a
+			// switched-off Template and importing it does not silently turn it on.
+			'disabled'   => ! FW_Theme_Builder_Resolver::is_enabled( $id ),
+			'priority'   => FW_Theme_Builder_Resolver::priority_of( $id ),
 			'header'     => $part_tree( $hid ),
 			'body'       => $part_tree( $bid ),
 			'footer'     => $part_tree( $fid ),
@@ -333,7 +337,13 @@ class FW_Theme_Builder_Seeder {
 			}
 			return is_wp_error( $tid ) ? $tid : new WP_Error( 'fw_tb_import_failed', __( 'Could not create the Template.', 'fw' ) );
 		}
-		self::write_template( (int) $tid, $name, $part_ids, self::normalize_conditions( isset( $data['conditions'] ) ? $data['conditions'] : array() ) );
+		self::write_template(
+			(int) $tid,
+			$name,
+			$part_ids,
+			self::normalize_conditions( isset( $data['conditions'] ) ? $data['conditions'] : array() ),
+			array_intersect_key( $data, array_flip( array( 'disabled', 'priority' ) ) )
+		);
 
 		return (int) $tid;
 	}
@@ -439,12 +449,24 @@ class FW_Theme_Builder_Seeder {
 		fw_set_db_post_option( $post_id, 'page-builder', array( 'json' => $json, 'builder_active' => true ) );
 	}
 
-	private static function write_template( $id, $name, $part_ids, $conditions ) {
+	/**
+	 * @param array $extra optional 'disabled' / 'priority'. Applied ONLY when the key
+	 *              is actually present: a theme re-seed carries neither, so a user who
+	 *              switched a bundled Template off does not get it switched back on.
+	 */
+	private static function write_template( $id, $name, $part_ids, $conditions, $extra = array() ) {
 		wp_update_post( array( 'ID' => $id, 'post_title' => $name ) );
 		fw_set_db_post_option( $id, 'tb_header_id', (int) $part_ids['header'] );
 		fw_set_db_post_option( $id, 'tb_body_id', (int) $part_ids['body'] );
 		fw_set_db_post_option( $id, 'tb_footer_id', (int) $part_ids['footer'] );
 		fw_set_db_post_option( $id, 'tb_conditions', $conditions );
+
+		if ( array_key_exists( 'disabled', $extra ) ) {
+			fw_set_db_post_option( $id, 'tb_disabled', empty( $extra['disabled'] ) ? 0 : 1 );
+		}
+		if ( array_key_exists( 'priority', $extra ) ) {
+			fw_set_db_post_option( $id, 'tb_priority', max( -100, min( 100, (int) $extra['priority'] ) ) );
+		}
 	}
 
 	private static function template_sig( $name, $part_ids, $conditions ) {
@@ -479,7 +501,11 @@ class FW_Theme_Builder_Seeder {
 				}
 				$out[] = array(
 					'type'     => sanitize_key( $r['type'] ),
-					'sub_type' => isset( $r['sub_type'] ) ? sanitize_key( $r['sub_type'] ) : '',
+					// NOT sanitize_key: a page-template qualifier is a filename
+					// ('page-landing.php') and stripping the dot would quietly break it.
+					'sub_type' => isset( $r['sub_type'] ) && class_exists( 'FW_Theme_Builder_Conditions' )
+						? FW_Theme_Builder_Conditions::sanitize_sub_type( $r['sub_type'] )
+						: ( isset( $r['sub_type'] ) ? trim( sanitize_text_field( (string) $r['sub_type'] ) ) : '' ),
 					'ids'      => ( isset( $r['ids'] ) && is_array( $r['ids'] ) ) ? array_map( 'intval', $r['ids'] ) : array(),
 				);
 			}
@@ -488,6 +514,9 @@ class FW_Theme_Builder_Seeder {
 		return array(
 			'use_on'       => $clean( isset( $c['use_on'] ) ? $c['use_on'] : array() ),
 			'exclude_from' => $clean( isset( $c['exclude_from'] ) ? $c['exclude_from'] : array() ),
+			// Carried through export/import/seed — dropping it would silently turn an
+			// AND Template back into a much broader OR one on the way in.
+			'relation'     => ( isset( $c['relation'] ) && 'and' === strtolower( (string) $c['relation'] ) ) ? 'and' : 'or',
 		);
 	}
 }

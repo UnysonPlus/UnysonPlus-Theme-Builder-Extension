@@ -228,8 +228,39 @@ function fw_tb_preview_url( $args, $against = '' ) {
 			$query[ 'fw_tb_' . $k ] = (int) $args[ $k ];
 		}
 	}
+	// Embedded previews (the thumbnails on the Theme Builder cards) drop the
+	// preview chrome — no badge, no admin bar — so the frame shows the design only.
+	if ( ! empty( $args['embed'] ) ) {
+		$query['fw_tb_embed'] = 1;
+	}
 	return add_query_arg( $query, $against ? $against : home_url( '/' ) );
 }
+
+/**
+ * True when this preview is being rendered INSIDE an admin thumbnail frame. Such a
+ * frame wants the design and nothing else, so the preview badge and the admin bar
+ * are both suppressed. Still gated by the preview request itself, so `fw_tb_embed`
+ * on its own (without a valid nonce + capability) does nothing at all.
+ *
+ * @internal
+ * @return bool
+ */
+function _fw_tb_is_embedded_preview() {
+	return ! empty( $_GET['fw_tb_embed'] ) && null !== _fw_tb_preview_request(); // phpcs:ignore WordPress.Security.NonceVerification
+}
+
+/**
+ * Drop the admin bar inside an embedded preview — it would otherwise sit across the
+ * top of every thumbnail and push the design down 32px.
+ *
+ * @internal
+ */
+function _action_fw_tb_embed_hide_admin_bar() {
+	if ( _fw_tb_is_embedded_preview() ) {
+		add_filter( 'show_admin_bar', '__return_false' );
+	}
+}
+add_action( 'init', '_action_fw_tb_embed_hide_admin_bar' );
 
 /**
  * A small fixed "Preview" badge during a live preview, so it's obvious the page is a
@@ -239,7 +270,7 @@ function fw_tb_preview_url( $args, $against = '' ) {
  * @internal
  */
 function _action_fw_tb_preview_badge() {
-	if ( null === _fw_tb_preview_request() ) {
+	if ( null === _fw_tb_preview_request() || _fw_tb_is_embedded_preview() ) {
 		return;
 	}
 	echo '<div class="fw-tb-preview-badge" style="position:fixed;z-index:99999;left:50%;bottom:18px;'

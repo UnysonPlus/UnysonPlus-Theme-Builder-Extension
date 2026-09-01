@@ -86,6 +86,10 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 
 			foreach ( $this->part_post_types as $pt ) {
 				add_action( 'add_meta_boxes_' . $pt, array( $this, '_action_add_usage_meta_box' ) );
+				// A "Used by" column, so a shared preset cannot be deleted from the
+				// list table without seeing what it would take down with it.
+				add_filter( 'manage_' . $pt . '_posts_columns', array( $this, '_filter_part_columns' ) );
+				add_action( 'manage_' . $pt . '_posts_custom_column', array( $this, '_action_part_column' ), 10, 2 );
 			}
 		}
 	}
@@ -378,6 +382,54 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 	}
 
 	/**
+	 * Add the "Used by" column just before the date.
+	 *
+	 * @internal
+	 */
+	public function _filter_part_columns( $columns ) {
+		$date = isset( $columns['date'] ) ? $columns['date'] : null;
+		unset( $columns['date'] );
+
+		$columns['up_used_by'] = __( 'Used by', 'fw' );
+
+		if ( null !== $date ) {
+			$columns['date'] = $date;
+		}
+
+		return $columns;
+	}
+
+	/**
+	 * @internal
+	 */
+	public function _action_part_column( $column, $post_id ) {
+		if ( 'up_used_by' !== $column ) {
+			return;
+		}
+
+		$templates = function_exists( 'fw_tb_templates_using_part' ) ? fw_tb_templates_using_part( $post_id ) : array();
+
+		if ( ! $templates ) {
+			echo '<span style="color:#8c8f94;">' . esc_html__( 'Not used yet', 'fw' ) . '</span>';
+			return;
+		}
+
+		$links = array();
+		foreach ( $templates as $tid ) {
+			$links[] = sprintf(
+				'<a href="%s">%s</a>',
+				esc_url( add_query_arg(
+					array( 'page' => 'fw-theme-builder', 'view' => 'edit', 'id' => (int) $tid ),
+					admin_url( 'admin.php' )
+				) ),
+				esc_html( get_the_title( $tid ) )
+			);
+		}
+
+		echo wp_kses_post( implode( ', ', $links ) );
+	}
+
+	/**
 	 * @internal
 	 */
 	public function _action_add_usage_meta_box() {
@@ -396,6 +448,34 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 	 */
 	public function _render_usage_meta_box( $post ) {
 		$is_body = ( $post->post_type === 'up_body' );
+
+		// What would break if this preset were deleted.
+		$used_by = function_exists( 'fw_tb_templates_using_part' ) ? fw_tb_templates_using_part( $post->ID ) : array();
+		if ( $used_by ) {
+			echo '<p style="padding:8px 10px;border-left:3px solid #3858e9;'
+				. 'background:color-mix(in srgb, #3858e9 7%, #fff);">';
+			echo '<strong>' . esc_html( sprintf(
+				/* translators: %d = number of Templates */
+				_n( 'Used by %d Template', 'Used by %d Templates', count( $used_by ), 'fw' ),
+				count( $used_by )
+			) ) . '</strong><br>';
+			$links = array();
+			foreach ( $used_by as $tid ) {
+				$links[] = sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( add_query_arg(
+						array( 'page' => 'fw-theme-builder', 'view' => 'edit', 'id' => (int) $tid ),
+						admin_url( 'admin.php' )
+					) ),
+					esc_html( get_the_title( $tid ) )
+				);
+			}
+			echo wp_kses_post( implode( ', ', $links ) );
+			echo '<br><em>' . esc_html__( 'Deleting this design will leave those Templates with an empty slot.', 'fw' ) . '</em>';
+			echo '</p>';
+		} elseif ( $post->post_status === 'publish' ) {
+			echo '<p style="color:#646970;">' . esc_html__( 'No Template uses this design yet.', 'fw' ) . '</p>';
+		}
 
 		if ( $post->post_status !== 'publish' ) {
 			echo '<p>' . esc_html__( 'Publish this, then assign it with a Template (Use On / Exclude From) in the Theme Builder.', 'fw' ) . '</p>';

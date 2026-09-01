@@ -1,0 +1,6 @@
+# The framework's Extensions manager installs this extension from GitHub's
+# /archive/refs/tags/<tag>.zip. `export-ignore` keeps developer-only files out of
+# that archive — so users do not download the internal planning document — while
+# leaving them in the repository for anyone working on the extension.
+THEME-BUILDER-PLAN.md export-ignore
+.gitattributes       export-ignore
