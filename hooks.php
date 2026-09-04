@@ -901,9 +901,13 @@ function _filter_fw_theme_builder_structure_elements_scope( $disabled ) {
 		return $disabled;
 	}
 
+	// The Flexbox is now a GENERAL layout primitive (Block / Flex / Grid) available on normal
+	// pages too, so it is no longer isolated to the Theme Builder palette. The Structure tab in
+	// the TB part editors still shows it (they returned early above). Extensions can still add
+	// their own TB-only structure elements via the filter.
 	$structure = apply_filters(
 		'fw_theme_builder_structure_elements',
-		array( 'flexbox' )
+		array()
 	);
 
 	return array_values( array_unique( array_merge( (array) $disabled, (array) $structure ) ) );

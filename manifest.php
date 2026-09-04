@@ -101,7 +101,7 @@ $manifest['description'] = __(
 	'fw'
 );
 
-$manifest['version']    = '1.1.49';
+$manifest['version']    = '1.1.50';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';
