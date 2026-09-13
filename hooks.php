@@ -759,6 +759,18 @@ function _filter_fw_ext_theme_builder_supported_post_types( $post_types ) {
 add_filter( 'fw_ext_page_builder_supported_post_types', '_filter_fw_ext_theme_builder_supported_post_types' );
 
 /**
+ * The Header/Footer/Body presets are ALWAYS built with the page builder (support is
+ * force-added for up_header/up_footer/up_body), so their Page Builder Settings "Activate
+ * for" checkboxes are locked on. Declare them.
+ *
+ * @internal
+ */
+function _filter_fw_ext_theme_builder_always_on_post_types( $post_types ) {
+	return array_merge( $post_types, array( 'up_header', 'up_footer', 'up_body' ) );
+}
+add_filter( 'fw_ext_page_builder_always_on_post_types', '_filter_fw_ext_theme_builder_always_on_post_types' );
+
+/**
  * Best-effort detection of the post type being edited in wp-admin (screen, then
  * the post-new / post.php / save request params).
  *
