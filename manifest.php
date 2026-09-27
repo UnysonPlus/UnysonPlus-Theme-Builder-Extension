@@ -7,6 +7,14 @@ $manifest = array();
 /**
  * Changelog ----------------------------------------------------------------
  *
+ * 1.1.53 - AI Assistant abilities. With the AI Assistant extension active:
+ *         theme-builder-list (parts, templates, what each applies to, and the
+ *         condition vocabulary) and theme-builder-save-template (create / update a
+ *         template's parts, display rules, enabled and priority; rules go through
+ *         rows_to_conditions(); undoable — a new template is trashed on undo). Parts
+ *         are built with the AI Assistant's page abilities — see includes/ai-abilities.php.
+ *
+ *
  * 1.1.47 - The List view scales: a search box, paged output (20 a page) and bulk
  *          Enable / Disable / Delete with the standard select-all. The Templates
  *          query stays unbounded on purpose — a Template's rank depends on every
@@ -101,7 +109,7 @@ $manifest['description'] = __(
 	'fw'
 );
 
-$manifest['version']    = '1.1.51';
+$manifest['version']    = '1.1.53';
 $manifest['display']    = true;
 $manifest['standalone'] = true;
 $manifest['thumbnail']  = 'thumbnail.svg';

@@ -59,6 +59,9 @@ class FW_Extension_Theme_Builder extends FW_Extension {
 	public function _init() {
 		add_action( 'init', array( $this, '_action_register_post_types' ) );
 
+		// AI Assistant abilities (only registered while that extension is active).
+		require_once dirname( __FILE__ ) . '/includes/ai-abilities.php';
+
 		// Inject the Header Type / Behavior meta box (header preset only). The
 		// framework applies this filter when building meta boxes AND when saving,
 		// so values persist to post meta with no custom save handler.
