@@ -383,6 +383,23 @@ function _action_fw_tb_admin_bar( $bar ) {
 	$resolved = $debug['resolved'];
 	$win_id   = $resolved ? (int) $resolved['template_id'] : 0;
 
+	// Candidate Templates worth listing: a winner, a positive score, or an explicit
+	// exclusion. Templates whose conditions don't apply at all are skipped.
+	$candidates = array();
+	foreach ( $debug['candidates'] as $c ) {
+		if ( $c['score'] < 0 && ! $c['excluded'] ) { continue; }
+		$candidates[] = $c;
+	}
+
+	// Nothing governs this page AND there is nothing to reason about → show no node at
+	// all. The bare "no Template matched" node was pure admin-bar clutter on every page
+	// that simply uses the site default header/footer (the common case once any Template
+	// exists). The debugger still appears whenever a Template wins here, or a candidate
+	// scored / was excluded — i.e. whenever there is actually something to explain.
+	if ( ! $win_id && empty( $candidates ) ) {
+		return;
+	}
+
 	$bar->add_node( array(
 		'id'    => 'fw-tb-debug',
 		'title' => $win_id
@@ -410,11 +427,7 @@ function _action_fw_tb_admin_bar( $bar ) {
 		) );
 	}
 
-	$shown = 0;
-	foreach ( $debug['candidates'] as $c ) {
-		if ( $c['score'] < 0 && ! $c['excluded'] ) {
-			continue;
-		}
+	foreach ( $candidates as $c ) {
 		$note = $c['excluded']
 			? __( 'excluded', 'fw' )
 			: ( $c['id'] === $win_id ? __( 'WINS', 'fw' ) : sprintf( __( 'score %d', 'fw' ), $c['score'] ) );
@@ -423,14 +436,6 @@ function _action_fw_tb_admin_bar( $bar ) {
 			'id'     => 'fw-tb-cand-' . $c['id'],
 			'title'  => esc_html( '• ' . $c['name'] . ' — ' . $note ),
 			'href'   => add_query_arg( array( 'page' => 'fw-theme-builder', 'view' => 'edit', 'id' => $c['id'] ), admin_url( 'admin.php' ) ),
-		) );
-		$shown++;
-	}
-	if ( ! $shown && ! $win_id ) {
-		$bar->add_node( array(
-			'parent' => 'fw-tb-debug',
-			'id'     => 'fw-tb-nomatch',
-			'title'  => esc_html__( 'No Template matched this request.', 'fw' ),
 		) );
 	}
 }

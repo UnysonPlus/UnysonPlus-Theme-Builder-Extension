@@ -146,7 +146,7 @@ if ( ! function_exists( 'fw_ext_theme_builder_ai_register' ) ) :
 					$keys[] = $k;
 				}
 			}
-			$rev = fw_ai_snapshot( array( 'post_meta' => array( $id => $keys ) ), 'unysonplus/theme-builder-save-template', sprintf( 'Changed Theme Builder template "%s"', get_the_title( $id ) ) );
+			$rev = ! function_exists( 'fw_ai_snapshot' ) ? 0 : fw_ai_snapshot( array( 'post_meta' => array( $id => $keys ) ), 'unysonplus/theme-builder-save-template', sprintf( 'Changed Theme Builder template "%s"', get_the_title( $id ) ) );
 			if ( isset( $in['title'] ) && trim( (string) $in['title'] ) !== '' ) {
 				wp_update_post( array( 'ID' => $id, 'post_title' => sanitize_text_field( (string) $in['title'] ) ) );
 			}
@@ -159,7 +159,7 @@ if ( ! function_exists( 'fw_ext_theme_builder_ai_register' ) ) :
 			if ( is_wp_error( $id ) ) {
 				return $id;
 			}
-			$rev = fw_ai_snapshot( array( 'created_posts' => array( $id ) ), 'unysonplus/theme-builder-save-template', sprintf( 'Created Theme Builder template "%s"', get_the_title( $id ) ) );
+			$rev = ! function_exists( 'fw_ai_snapshot' ) ? 0 : fw_ai_snapshot( array( 'created_posts' => array( $id ) ), 'unysonplus/theme-builder-save-template', sprintf( 'Created Theme Builder template "%s"', get_the_title( $id ) ) );
 			foreach ( array( 'tb_header_id', 'tb_body_id', 'tb_footer_id' ) as $k ) {
 				fw_set_db_post_option( $id, $k, 0 );
 			}

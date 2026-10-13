@@ -1200,3 +1200,90 @@
 	opacity: .45;
 	filter: grayscale(1);
 }
+
+/* ---- Dark admin-skin support --------------------------------------------
+ * This page's cards/panels/toggles are hardcoded light. Repaint them for the
+ * admin skin's dark mode with a flipping-variable palette: LIGHT defaults
+ * reproduce today's look, and the two dark triggers (html[data-upa-mode=dark]
+ * and system + prefers-dark) flip them — pulling admin-skin's own surface
+ * tokens so the page matches the rest of wp-admin, with dark fallbacks when a
+ * token is absent (admin-skin off). Light mode is unchanged. */
+.fw-tb-wrap {
+	--tb-panel: #fff;
+	--tb-inset: #f6f7f7;
+	--tb-inset2: #fbfbfc;
+	--tb-border: #dcdcde;
+	--tb-border2: #c3c4c7;
+	--tb-ink: #1d2327;
+	--tb-mut: #646970;
+	--tb-danger-bg: #fdf8f8;
+	--tb-warn-bg: #fdfaf3;
+}
+html[data-upa-mode="dark"] body.upa .fw-tb-wrap {
+	--tb-panel: var(--upa-panel, #1d1f24);
+	--tb-inset: var(--upa-panel2, #17181c);
+	--tb-inset2: var(--upa-panel2, #202228);
+	--tb-border: var(--upa-border, #35373f);
+	--tb-border2: var(--upa-border, #3f424a);
+	--tb-ink: var(--upa-text, #e5e7ec);
+	--tb-mut: var(--upa-text2, #a1a5ae);
+	--tb-danger-bg: #2a1416;
+	--tb-warn-bg: #2a2410;
+}
+@media (prefers-color-scheme: dark) {
+	html[data-upa-mode="system"] body.upa .fw-tb-wrap {
+		--tb-panel: var(--upa-panel, #1d1f24);
+		--tb-inset: var(--upa-panel2, #17181c);
+		--tb-inset2: var(--upa-panel2, #202228);
+		--tb-border: var(--upa-border, #35373f);
+		--tb-border2: var(--upa-border, #3f424a);
+		--tb-ink: var(--upa-text, #e5e7ec);
+		--tb-mut: var(--upa-text2, #a1a5ae);
+		--tb-danger-bg: #2a1416;
+		--tb-warn-bg: #2a2410;
+	}
+}
+/* Panels (#fff surfaces). */
+.fw-tb-wrap .fw-tb-empty,
+.fw-tb-wrap .fw-tb-modal,
+.fw-tb-wrap .fw-tb-viewswitch,
+.fw-tb-wrap .fw-tb-menu,
+.fw-tb-wrap .fw-tb-picker,
+.fw-tb-wrap .fw-tb-tree,
+.fw-tb-wrap .fw-tb-previews-toggle,
+.fw-tb-wrap .fw-tb-card,
+.fw-tb-wrap .fw-tb-cond-row {
+	background: var(--tb-panel);
+	border-color: var(--tb-border);
+	color: var(--tb-ink);
+}
+/* Inset / secondary surfaces. */
+.fw-tb-wrap .fw-tb-card--new,
+.fw-tb-wrap .fw-tb-card.is-disabled,
+.fw-tb-wrap .fw-tb-menu-toggle[aria-expanded="true"],
+.fw-tb-wrap .fw-tb-card__cond,
+.fw-tb-wrap .fw-tb-card__badge--priority,
+.fw-tb-wrap .fw-tb-tree__chip.is-off,
+.fw-tb-wrap .fw-tb-card__preview,
+.fw-tb-wrap .fw-tb-viewswitch__btn:hover,
+.fw-tb-wrap .fw-tb-slot.is-filled .fw-tb-slot__body {
+	background: var(--tb-inset);
+	border-color: var(--tb-border);
+}
+/* Semantic condition-row tints. */
+.fw-tb-wrap .fw-tb-cond-row.is-exclude { background: var(--tb-danger-bg); }
+.fw-tb-wrap .fw-tb-cond-row.is-incomplete,
+.fw-tb-wrap .fw-tb-tree__unplaced { background: var(--tb-warn-bg); }
+/* Generic borders + muted text. */
+.fw-tb-wrap .fw-tb-slot__body,
+.fw-tb-wrap .fw-tb-form .metabox-holder,
+.fw-tb-wrap .fw-tb-table td,
+.fw-tb-wrap .fw-tb-part-tools { border-color: var(--tb-border); }
+.fw-tb-wrap .description,
+.fw-tb-wrap .fw-tb-intro,
+.fw-tb-wrap .fw-tb-intro p,
+.fw-tb-wrap .fw-tb-cards__hint,
+.fw-tb-wrap .fw-tb-empty p,
+.fw-tb-wrap .fw-tb-newpart-tip,
+.fw-tb-wrap .fw-tb-card__badge,
+.fw-tb-wrap .fw-tb-status { color: var(--tb-mut); }
